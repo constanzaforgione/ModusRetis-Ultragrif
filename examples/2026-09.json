@@ -1,0 +1,229 @@
+{
+  "horas_totales": 215,
+  "canales": "Mercado Libre · Tiendanube · Publicidad · Logística · Redes Sociales",
+  "areas": [
+    {"nombre": "Canales de Venta", "horas": 98, "descripcion": "Mercado Libre y Tiendanube: publicaciones, nueva importación, reclamos, promociones y alta en Odoo"},
+    {"nombre": "Redes Sociales", "horas": 80, "descripcion": "Instagram, TikTok y Meta Ads: calendario, reels y lanzamientos de nuevos productos"},
+    {"nombre": "Publicidad", "horas": 12, "descripcion": "Mercado Libre Ads: seguimiento de inversión, rendimiento y stock en campañas"},
+    {"nombre": "Organización de equipo", "horas": 25, "descripcion": "Planificación, oportunidades de mejora y herramientas internas"}
+  ],
+  "subtitulo_areas": "",
+  "secciones": [
+    {
+      "titulo": "Resultados en Mercado Libre",
+      "subtitulo": "Desempeño de ventas y reputación de la cuenta durante septiembre",
+      "diapositivas": [
+        {
+          "tipo": "kpis_texto",
+          "titulo": "Mercado Libre",
+          "titulo_destacado": "· Ventas",
+          "subtitulo": "Del 01/09 al 30/09 inclusive",
+          "kpis": [
+            {"valor": "143", "etiqueta": "Ventas", "variacion": {"direccion": "baja", "texto": "37,00% vs ago/26", "tono": "negativo"}},
+            {"valor": "18.122", "etiqueta": "Visitas", "variacion": {"direccion": "baja", "texto": "29,79% vs ago/26", "tono": "negativo"}},
+            {"valor": "$217.194", "etiqueta": "Precio prom. venta", "variacion": {"direccion": "baja", "texto": "6,83% vs ago/26", "tono": "advertencia"}},
+            {"valor": "0,80%", "etiqueta": "Tasa de conversión", "variacion": {"direccion": "baja", "texto": "0,10 pts vs ago/26", "tono": "advertencia"}},
+            {"valor": "$31,1M", "etiqueta": "Ingresos totales", "variacion": {"direccion": "baja", "texto": "41,31% vs ago/26", "tono": "negativo"}}
+          ],
+          "parrafos": [
+            "Septiembre mostró una baja en los principales indicadores frente a agosto, en un contexto de menor disponibilidad de stock en distintos productos, incluyendo algunos artículos que habitualmente concentran buena parte de las ventas del canal.",
+            "Las visitas se redujeron 29,79% y las ventas se ubicaron en 143 operaciones, mientras el precio promedio pasó de $233.118 a $217.194, llevando la facturación bruta a $31.058.705 (-41,31%).",
+            "Hacia fin de mes ingresó nuevo stock y se sumaron nuevos productos al catálogo: su impacto todavía fue limitado en septiembre, pero abre una oportunidad para octubre."
+          ]
+        },
+        {
+          "tipo": "reputacion",
+          "titulo": "Reputación",
+          "titulo_destacado": "de la cuenta",
+          "subtitulo": "",
+          "destacado": {"icono": "insignia", "titulo": "Reclamos gestionados con soporte de ML", "texto": "Se gestionó la exclusión de reclamos en casos donde el error no fue del vendedor, para que no afecten la reputación de la cuenta."},
+          "metricas": [
+            {"valor": "333", "etiqueta": "Ventas 60 días", "alerta": false},
+            {"valor": "275", "etiqueta": "Con envíos", "alerta": false},
+            {"valor": "312", "etiqueta": "Concretadas", "alerta": false},
+            {"valor": "1,20%", "etiqueta": "Reclamos", "alerta": true},
+            {"valor": "0,30%", "etiqueta": "Mediaciones", "alerta": false},
+            {"valor": "0%", "etiqueta": "Canceladas x vendedor", "alerta": false},
+            {"valor": "1,81%", "etiqueta": "Envíos incorrectos", "alerta": true}
+          ],
+          "parrafos": [
+            "Los indicadores se mantienen dentro de los parámetros de Mercado Libre. Los reclamos representan 1,20%, por lo que haremos un seguimiento cercano: hubo casos de productos que llegaron con inconvenientes en su estado.",
+            "Como medida preventiva, vamos a reforzar la revisión del estado de los productos antes del despacho. No hubo cancelaciones atribuibles al vendedor."
+          ]
+        }
+      ]
+    },
+    {
+      "titulo": "Publicidad",
+      "subtitulo": "Mercado Libre Ads y cierre de la campaña en Meta Ads",
+      "diapositivas": [
+        {
+          "tipo": "ads",
+          "titulo": "Mercado Libre",
+          "titulo_destacado": "Ads",
+          "subtitulo": "Product Ads: rendimiento, inversión y retorno",
+          "kpis": [
+            {"valor": "$5,80M", "etiqueta": "Ingresos atribuidos", "variacion": {"direccion": "baja", "texto": "23,27% vs ago", "tono": "negativo"}},
+            {"valor": "$495.461", "etiqueta": "Inversión", "variacion": {"direccion": "baja", "texto": "9,95% vs ago", "tono": "neutral"}},
+            {"valor": "25", "etiqueta": "Ventas atribuidas", "variacion": {"direccion": "baja", "texto": "24,24% vs ago", "tono": "negativo"}},
+            {"valor": "675.617", "etiqueta": "Impresiones", "variacion": {"direccion": "baja", "texto": "17,18% vs ago", "tono": "negativo"}},
+            {"valor": "2.813", "etiqueta": "Clics", "variacion": {"direccion": "sube", "texto": "1,33% vs ago", "tono": "positivo"}},
+            {"valor": "$176,13", "etiqueta": "Costo por clic", "variacion": {"direccion": "baja", "texto": "11,13% vs ago", "tono": "positivo"}},
+            {"valor": "$19.818", "etiqueta": "Costo por venta", "variacion": {"direccion": "sube", "texto": "18,86% vs ago", "tono": "negativo"}}
+          ],
+          "roas": {"valor": "11,70x", "etiqueta": "ROAS", "variacion": {"direccion": "baja", "texto": "14,81% vs ago/26", "tono": "negativo"}},
+          "roas_explicacion": "$1 invertido → $11,70 en ventas atribuidas",
+          "nota": "Con una inversión 9,95% menor, las campañas generaron 25 ventas y $5,80M atribuidos. Los clics se mantuvieron estables y el costo por clic mejoró ($198,20 → $176,13). La falta de stock limitó productos con buena respuesta; con la reposición de fin de mes, en octubre vamos a redistribuir los productos dentro de las campañas."
+        },
+        {
+          "tipo": "grupos_metricas",
+          "titulo": "Meta Ads",
+          "titulo_destacado": "",
+          "subtitulo": "“Campaña Agosto 2026 | Tráfico Rec” · activa solo los primeros días de septiembre",
+          "grupos": [
+            {
+              "nombre": "INSTAGRAM",
+              "kpis": [
+                {"valor": "158.430", "etiqueta": "Impresiones"},
+                {"valor": "135.120", "etiqueta": "Alcance (cuentas únicas)"},
+                {"valor": "1,17", "etiqueta": "Frecuencia"},
+                {"valor": "92", "etiqueta": "Clics"},
+                {"valor": "$46,5K", "etiqueta": "Inversión"},
+                {"valor": "$293,57", "etiqueta": "Costo c/mil impresiones"},
+                {"valor": "$505,54", "etiqueta": "Costo por clic"},
+                {"valor": "0,06%", "etiqueta": "Tasa de clics"}
+              ]
+            }
+          ],
+          "nota": "Con la pauta activa solo unos días, las impresiones totales en redes cayeron 86,84%. Recomendamos mantenerla activa todo el mes, con objetivo de tráfico a la web."
+        }
+      ]
+    },
+    {
+      "titulo": "Redes Sociales",
+      "subtitulo": "Contenido orgánico y lanzamiento de nuevos productos",
+      "diapositivas": [
+        {
+          "tipo": "vision_general",
+          "titulo": "Visión",
+          "titulo_destacado": "general",
+          "subtitulo": "Crecimiento de la marca en el conjunto de plataformas para septiembre 2026",
+          "kpis": [
+            {"valor": "164,07K", "etiqueta": "Impresiones totales", "variacion": {"direccion": "baja", "texto": "86,84%", "tono": "negativo"}},
+            {"valor": "781", "etiqueta": "Seguidores", "variacion": {"direccion": "sube", "texto": "0,51%", "tono": "positivo"}},
+            {"valor": "166", "etiqueta": "Interacciones", "variacion": {"direccion": "igual", "texto": "Instagram 156 · TikTok 10", "tono": "neutral"}},
+            {"valor": "22", "etiqueta": "Publicaciones", "variacion": {"direccion": "baja", "texto": "24,14%", "tono": "negativo"}}
+          ],
+          "recuadro": {
+            "titulo": "📉 Un mes sostenido por el contenido orgánico",
+            "texto": "Con la pauta de Meta Ads activa solo los primeros días, las impresiones totales bajaron a 164,07K. La comunidad se mantuvo estable (781 seguidores) y los reels siguieron siendo el formato con mejor respuesta."
+          }
+        },
+        {
+          "tipo": "kpis_lista",
+          "titulo": "Instagram",
+          "titulo_destacado": "· Comunidad y alcance",
+          "subtitulo": "Comunidad, alcance y perfil de audiencia",
+          "kpis": [
+            {"valor": "774", "etiqueta": "Seguidores", "variacion": {"direccion": "igual", "texto": "+6 netos en el mes", "tono": "positivo"}},
+            {"valor": "163.509", "etiqueta": "Visualizaciones", "variacion": {"direccion": "igual", "texto": "118.146 cuentas alcanzadas", "tono": "neutral"}}
+          ],
+          "lista_titulo": "Perfil de audiencia",
+          "lista": [
+            "94,81% en Argentina",
+            "36,36% concentrado en CABA",
+            "11 publicaciones: 10 reels y 1 post",
+            "177 visitas al perfil · 66 clics en la bio"
+          ],
+          "nota": "El reel más visto fue el de la silla blanca (391 visualizaciones) y el de mayor engagement, “POV: tu casa quiere un poco de color”. El post educativo sobre ergonomía sumó 269 visualizaciones y los reels de lanzamiento de mesas redondas y sillas tapizadas, 221 y 163."
+        },
+        {
+          "tipo": "plataforma",
+          "titulo": "TikTok",
+          "titulo_destacado": "",
+          "subtitulo": "Otras plataformas",
+          "tarjeta": {
+            "nombre": "TikTok",
+            "kpis": [
+              {"valor": "11", "etiqueta": "Videos publicados"},
+              {"valor": "10", "etiqueta": "Interacciones", "variacion": {"direccion": "baja", "texto": "82,14%", "tono": "negativo"}}
+            ],
+            "detalle": "841 visualizaciones (▼ 81,10%) · 7 seguidores",
+            "nota": "Sigue siendo la red de menor alcance. El video más visto fue “Un día. Mil momentos” (228 visualizaciones)."
+          }
+        },
+        {
+          "tipo": "dos_columnas",
+          "titulo": "Tareas",
+          "titulo_destacado": "y recomendaciones",
+          "subtitulo": "Gestión integral de redes y próximos pasos de contenido",
+          "izquierda": {
+            "titulo": "Tareas realizadas",
+            "estilo": "lista",
+            "items": [
+              "Planificación del calendario mensual y programación en Metricool y en Instagram",
+              "Diseño y edición de reels, posts e historias, y redacción de copys",
+              "Comunicación de los lanzamientos de las mesas redondas y las sillas tapizadas"
+            ]
+          },
+          "derecha": {
+            "titulo": "Recomendaciones",
+            "estilo": "recuadro",
+            "items": [
+              "Priorizar los reels con gancho visual y el contenido educativo (ergonomía, tips para aprovechar espacios), que fueron los de mejor respuesta.",
+              "→ Acompañar los lanzamientos con producto en uso y un llamado a la acción claro, y mantener la pauta activa todo el mes con objetivo de tráfico a la web."
+            ]
+          }
+        },
+        {
+          "tipo": "lista_numerada",
+          "titulo": "Conclusiones",
+          "titulo_destacado": "",
+          "subtitulo": "Qué nos dejó septiembre",
+          "items": [
+            {"titulo": "El stock condicionó el mes", "texto": "La menor disponibilidad de productos clave explicó la baja en visitas, ventas y facturación."},
+            {"titulo": "Nuevo stock para octubre", "texto": "El ingreso de mercadería y productos nuevos sobre el cierre del mes abre una oportunidad para recuperar volumen."},
+            {"titulo": "Reputación bajo control", "texto": "Indicadores dentro de los parámetros de ML, con foco en reducir reclamos por estado del producto."},
+            {"titulo": "Publicidad más eficiente", "texto": "En ML Ads, el costo por clic bajó 11,13% y el ROAS se mantuvo en 11,70x a pesar de la falta de stock."},
+            {"titulo": "Reels y contenido educativo", "texto": "Fueron los formatos con mejor respuesta en redes: la base para la estrategia de contenido de octubre."}
+          ]
+        }
+      ]
+    },
+    {
+      "titulo": "Mejora continua",
+      "subtitulo": "Planificación de la estrategia de equipo para continuar haciendo crecer la marca.",
+      "diapositivas": [
+        {
+          "tipo": "dos_columnas",
+          "titulo": "Organización",
+          "titulo_destacado": "de equipo",
+          "subtitulo": "25 hs en planificación, mejoras y herramientas internas",
+          "izquierda": {
+            "titulo": "Tareas realizadas",
+            "estilo": "lista",
+            "items": [
+              "Reuniones de planificación y organización interna de la estrategia comercial y operativa de la cuenta",
+              "Identificación de oportunidades de mejora",
+              "Gestión de licencia en Odoo: alta e integración en la plataforma",
+              "Mantenimiento y análisis de apps internas para mejorar la medición de métricas y reducir tareas manuales"
+            ]
+          },
+          "derecha": {
+            "titulo": "Próximos pasos",
+            "estilo": "lista",
+            "items": [
+              "Aprovechar la nueva mercadería para ampliar la disponibilidad del catálogo",
+              "Revisar inversión y distribución en ML Ads, priorizando productos con stock",
+              "Optimizar publicaciones con muchas visitas y baja conversión",
+              "Reforzar la revisión de los productos antes del despacho",
+              "Seguimiento semanal de la reputación, con foco en reclamos",
+              "Continuar con la carga y optimización de los nuevos productos",
+              "Renovar la pauta en redes para ganar seguidores y traccionar Tiendanube"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

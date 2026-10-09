@@ -1,0 +1,71 @@
+name: Informe mensual Confort Iván
+
+on:
+  schedule:
+    # Días 1 a 6 de cada mes, 09:00 hora Argentina (12:00 UTC).
+    # Cada corrida genera el informe del mes anterior apenas el resumen de ClickUp
+    # existe y lleva 24 h sin editarse; si ya está en Drive, no hace nada.
+    - cron: "0 12 1-6 * *"
+  workflow_dispatch:
+    inputs:
+      mes:
+        description: "Mes a informar (AAAA-MM). Vacío = mes anterior"
+        required: false
+      reemplazar:
+        description: "Regenerar y reemplazar si ya existe en Drive"
+        type: boolean
+        default: false
+
+concurrency:
+  group: informe-mensual
+  cancel-in-progress: false
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Generar informe
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          ARGS=()
+          if [ -n "${{ inputs.mes }}" ]; then ARGS+=(--mes "${{ inputs.mes }}"); fi
+          if [ "${{ inputs.reemplazar }}" = "true" ]; then ARGS+=(--reemplazar); fi
+          # En las corridas programadas se espera a que el resumen esté estable,
+          # salvo el día 6, que es el último intento.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=America/Argentina/Buenos_Aires date +%-d)" -lt 6 ]; then
+            ARGS+=(--horas-sin-editar 24)
+          fi
+          set +e
+          python -m informe_mensual generar "${ARGS[@]}"
+          CODIGO=$?
+          set -e
+          # Código 2 = todavía no hay resumen en ClickUp: solo es error en el último intento.
+          if [ $CODIGO -eq 2 ] && [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=America/Argentina/Buenos_Aires date +%-d)" -lt 6 ]; then
+            exit 0
+          fi
+          exit $CODIGO
+
+      - name: Guardar archivos generados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-mensual
+          path: salida/
+          if-no-files-found: ignore
+          retention-days: 90
