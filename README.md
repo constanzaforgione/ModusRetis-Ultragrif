@@ -1,3 +1,5 @@
+> En este repo también está **[`planning/`](planning/README.md)**: la app web de roadmap y tareas del equipo (Vercel + Supabase).
+
 # Informe mensual · Confort Iván
 
 Automatización que toma el **resumen mensual de ClickUp** de Confort Iván y genera la
