@@ -49,9 +49,39 @@ export interface Task {
   priority: Priority;
   start_date: string | null;
   due_date: string | null;
+  /** "HH:MM:SS" — horario dentro del día, para el calendario */
+  start_time: string | null;
+  end_time: string | null;
+  recurring_id: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type Recurrence = "diaria" | "semanal" | "quincenal" | "mensual";
+export const RECURRENCE: { key: Recurrence; label: string; every: string }[] = [
+  { key: "diaria", label: "Todos los días hábiles", every: "todos los días hábiles" },
+  { key: "semanal", label: "Todas las semanas", every: "todas las semanas" },
+  { key: "quincenal", label: "Cada 2 semanas", every: "cada 2 semanas" },
+  { key: "mensual", label: "Todos los meses", every: "todos los meses" },
+];
+
+export interface RecurringTask {
+  id: string;
+  title: string;
+  description: string;
+  client_id: string | null;
+  project_id: string | null;
+  assignee_id: string;
+  created_by: string;
+  priority: Priority;
+  frequency: Recurrence;
+  next_date: string;
+  due_offset: number;
+  start_time: string | null;
+  end_time: string | null;
+  active: boolean;
+  created_at: string;
 }
 
 export interface Notification {

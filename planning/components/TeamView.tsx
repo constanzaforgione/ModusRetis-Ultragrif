@@ -5,9 +5,23 @@ import { Avatar } from "./ui";
 import { ROLE_LABEL, type Profile, type Role } from "@/lib/types";
 
 export function TeamView() {
-  const { me, profiles, tasks, today, save, toast } = useData();
+  const { me, profiles, tasks, today, save, toast, reload } = useData();
   const admin = me.role === "admin";
   const [name, setName] = useState(me.full_name);
+  const [add, setAdd] = useState({ full_name: "", email: "", role: "miembro" as Role, lead_id: "" });
+  const [adding, setAdding] = useState(false);
+
+  async function addPerson(e: React.FormEvent) {
+    e.preventDefault();
+    setAdding(true);
+    const res = await fetch("/api/team", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(add) });
+    const body = await res.json().catch(() => ({}));
+    setAdding(false);
+    if (!res.ok) return toast(body.error ?? "No se pudo sumar a la persona", true);
+    toast(`${add.full_name} ya está en el equipo: le podés asignar tareas`);
+    setAdd({ full_name: "", email: "", role: "miembro", lead_id: "" });
+    reload("profiles");
+  }
 
   async function update(p: Profile, patch: Partial<Profile>) {
     const { error } = await save<Profile>("profiles", { id: p.id, ...patch });
@@ -41,10 +55,57 @@ export function TeamView() {
         </label>
       </div>
 
+      {admin && (
+        <form className="panel" onSubmit={addPerson} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <h2>Sumar a alguien</h2>
+            <div className="muted" style={{ fontSize: 13 }}>
+              Queda cargada al instante para asignarle tareas, aunque todavía no haya entrado. Después le pasás el link de la app y entra con ese mismo mail.
+            </div>
+          </div>
+          <div className="grid4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            <label className="field">
+              <span>Nombre</span>
+              <input type="text" required value={add.full_name} onChange={(e) => setAdd({ ...add, full_name: e.target.value })} placeholder="Ej: Yanina" />
+            </label>
+            <label className="field">
+              <span>Mail</span>
+              <input type="email" required value={add.email} onChange={(e) => setAdd({ ...add, email: e.target.value })} placeholder="yani@modusretis.com" />
+            </label>
+            <label className="field">
+              <span>Rol</span>
+              <select value={add.role} onChange={(e) => setAdd({ ...add, role: e.target.value as Role })}>
+                {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Líder</span>
+              <select value={add.lead_id} onChange={(e) => setAdd({ ...add, lead_id: e.target.value })}>
+                <option value="">—</option>
+                {leads.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div>
+            <button className="btn primary" disabled={adding}>
+              {adding ? "Sumando…" : "+ Sumar al equipo"}
+            </button>
+          </div>
+        </form>
+      )}
+
       <div className="panel">
         <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
-          <b>Admin</b>: todo, incluido borrar y cambiar roles. <b>Líder</b>: edita el roadmap y las tareas de su equipo. <b>Miembro</b>: crea y edita solo sus
-          tareas. Todos ven todo.
+          <b>Admin</b>: todo, incluido borrar y cambiar roles. <b>Líder</b>: edita el roadmap, asigna tareas a cualquiera y gestiona las de su equipo.{" "}
+          <b>Miembro</b>: crea y edita solo sus tareas. Todos ven todo.
           {!admin && " Solo un admin puede cambiar roles."}
         </div>
         <div className="table-wrap">
@@ -124,7 +185,7 @@ export function TeamView() {
           </table>
         </div>
         <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
-          Para sumar a alguien, que entre con su mail de trabajo: aparece acá como Miembro y un admin le asigna rol y líder.
+          También pueden entrar solos con su mail de trabajo: aparecen acá como Miembro y un admin les asigna rol y líder.
         </p>
       </div>
     </>

@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 
 const schema = readFileSync(new URL("../supabase/migrations/0001_init.sql", import.meta.url), "utf8");
+const schema2 = readFileSync(new URL("../supabase/migrations/0002_horarios_repeticion_asignacion.sql", import.meta.url), "utf8");
 const seed = readFileSync(new URL("../supabase/seed.sql", import.meta.url), "utf8");
 
 const ADMIN = "00000000-0000-0000-0000-00000000000a";
@@ -23,6 +24,7 @@ async function setup() {
       $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
   await db.exec(schema);
+  await db.exec(schema2);
   await db.exec(seed);
   await db.exec(`
     grant usage on schema public, auth to authenticated;
@@ -95,18 +97,25 @@ test("nadie salvo admin borra tareas", async () => {
   assert.equal(del.rows.length, 1);
 });
 
-test("un líder gestiona las tareas de su equipo y no las de otros equipos", async () => {
+test("un líder gestiona las tareas de su equipo y asigna a cualquiera", async () => {
   const db = await setup();
   const t = await as(db, LEAD, ...newTask(MEMBER));
   const upd = await as(db, LEAD, `update public.tasks set priority = 'urgente' where id = $1 returning id`, [t.rows[0].id]);
   assert.equal(upd.rows.length, 1);
-  await assert.rejects(as(db, LEAD, ...newTask(OTHER)), /row-level security/);
+  // puede asignarle a alguien de otro equipo y seguir editando lo que él creó
+  const other = await as(db, LEAD, ...newTask(OTHER));
+  const upd2 = await as(db, LEAD, `update public.tasks set priority = 'alta' where id = $1 returning id`, [other.rows[0].id]);
+  assert.equal(upd2.rows.length, 1);
+  // pero no tareas de otros equipos que no creó
+  const foreign = await as(db, OTHER, ...newTask(OTHER));
+  const upd3 = await as(db, LEAD, `update public.tasks set priority = 'alta' where id = $1 returning id`, [foreign.rows[0].id]);
+  assert.equal(upd3.rows.length, 0);
 
-  // al miembro le llega el aviso de asignación
+  // a cada uno le llega el aviso de su asignación (y solo ve los suyos)
   const n = await as(db, MEMBER, `select kind from public.notifications`);
   assert.deepEqual(n.rows.map((r) => r.kind), ["asignada"]);
   const nOther = await as(db, OTHER, `select count(*)::int as n from public.notifications`);
-  assert.equal(nOther.rows[0].n, 0);
+  assert.equal(nOther.rows[0].n, 1);
 });
 
 test("roadmap y clientes: solo admin/líder editan", async () => {
@@ -133,4 +142,35 @@ test("solo admin cambia roles", async () => {
   const ok = await as(db, MEMBER, `update public.profiles set full_name = 'Nuevo nombre' where id = $1 returning id`, [MEMBER]);
   assert.equal(ok.rows.length, 1);
   await as(db, ADMIN, `update public.profiles set role = 'lider' where id = $1`, [OTHER]);
+});
+
+test("tareas repetitivas: crea la del período, no duplica y avanza", async () => {
+  const db = await setup();
+  const today = (await db.query(`select (now() at time zone 'America/Argentina/Buenos_Aires')::date::text d`)).rows[0].d;
+  await as(db, MEMBER, `insert into public.recurring_tasks (title, assignee_id, created_by, frequency, next_date, due_offset, start_time)
+    values ('Reporte semanal', $1, $1, 'semanal', $2::date - 14, 2, '10:00')`, [MEMBER, today]);
+  // un miembro no puede crear repeticiones para otros
+  await assert.rejects(
+    as(db, MEMBER, `insert into public.recurring_tasks (title, assignee_id, created_by, frequency, next_date) values ('X', $1, $1, 'semanal', current_date)`, [OTHER]),
+    /row-level security/,
+  );
+  const first = await as(db, MEMBER, `select public.spawn_recurring() n`);
+  assert.equal(first.rows[0].n, 1, "solo la ocurrencia más reciente, no las atrasadas");
+  const again = await as(db, MEMBER, `select public.spawn_recurring() n`);
+  assert.equal(again.rows[0].n, 0, "no duplica");
+  const t = (await db.query(`select start_date::text s, due_date - start_date as off, start_time::text h from public.tasks where recurring_id is not null`)).rows;
+  assert.equal(t.length, 1);
+  assert.equal(t[0].s, today);
+  assert.equal(t[0].off, 2);
+  assert.equal(t[0].h, "10:00:00");
+  const next = (await db.query(`select (next_date - $1::date) as d from public.recurring_tasks`, [today])).rows[0].d;
+  assert.equal(next, 7);
+  const n = await as(db, MEMBER, `select kind from public.notifications`);
+  assert.deepEqual(n.rows.map((r) => r.kind), ["repeticion"]);
+});
+
+test("diaria saltea fines de semana", async () => {
+  const db = await setup();
+  const r = (await db.query(`select public.next_occurrence('2026-10-16', 'diaria')::text a, public.next_occurrence('2026-10-14', 'diaria')::text b, public.next_occurrence('2026-01-31', 'mensual')::text c`)).rows[0];
+  assert.deepEqual(r, { a: "2026-10-19", b: "2026-10-15", c: "2026-02-28" });
 });

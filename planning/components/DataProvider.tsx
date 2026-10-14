@@ -2,10 +2,10 @@
 // Carga clientes, roadmap, tareas y equipo una vez y los mantiene al día con Supabase Realtime.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { Client, Notification, Profile, Project, Task } from "@/lib/types";
+import type { Client, Notification, Profile, Project, RecurringTask, Task } from "@/lib/types";
 import { todayISO } from "@/lib/dates";
 
-type Table = "tasks" | "projects" | "clients" | "profiles" | "notifications";
+type Table = "tasks" | "projects" | "clients" | "profiles" | "notifications" | "recurring_tasks";
 
 interface Data {
   me: Profile;
@@ -13,6 +13,7 @@ interface Data {
   clients: Client[];
   projects: Project[];
   tasks: Task[];
+  recurring: RecurringTask[];
   notifications: Notification[];
   loading: boolean;
   today: string;
@@ -46,6 +47,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [recurring, setRecurring] = useState<RecurringTask[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState<{ msg: string; err: boolean } | null>(null);
@@ -72,6 +74,9 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
         } else if (t === "projects") {
           const { data } = await sb.from("projects").select("*").order("start_date");
           if (data) setProjects(data as Project[]);
+        } else if (t === "recurring_tasks") {
+          const { data } = await sb.from("recurring_tasks").select("*").eq("active", true);
+          if (data) setRecurring(data as RecurringTask[]);
         } else if (t === "tasks") {
           const { data } = await sb.from("tasks").select("*").order("due_date", { nullsFirst: false });
           if (data) setTasks(data as Task[]);
@@ -86,15 +91,19 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
         }
       };
       if (table) await load(table);
-      else await Promise.all((["profiles", "clients", "projects", "tasks", "notifications"] as Table[]).map(load));
+      else await Promise.all((["profiles", "clients", "projects", "tasks", "notifications", "recurring_tasks"] as Table[]).map(load));
     },
     [sb, initialMe.id],
   );
 
   useEffect(() => {
-    reload().finally(() => setLoading(false));
+    // Crea las tareas repetitivas que tocan hoy (no duplica) y después carga todo
+    Promise.resolve(sb.rpc("spawn_recurring"))
+      .catch(() => null)
+      .then(() => reload())
+      .finally(() => setLoading(false));
     const ch = sb.channel("planning");
-    (["tasks", "projects", "clients", "profiles", "notifications"] as Table[]).forEach((t) =>
+    (["tasks", "projects", "clients", "profiles", "notifications", "recurring_tasks"] as Table[]).forEach((t) =>
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => reload(t)),
     );
     ch.subscribe();
@@ -142,7 +151,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
     [profiles, clients, projects],
   );
 
-  const value: Data = { me, profiles, clients, projects, tasks, notifications, loading, today, reload, save, remove, toast, byId };
+  const value: Data = { me, profiles, clients, projects, tasks, recurring, notifications, loading, today, reload, save, remove, toast, byId };
 
   return (
     <Ctx.Provider value={value}>

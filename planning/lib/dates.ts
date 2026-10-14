@@ -57,3 +57,33 @@ export function relative(s: string, today: string): string {
   if (n === -1) return "ayer";
   return n > 0 ? `en ${n} días` : `hace ${-n} días`;
 }
+
+/** Igual que public.next_occurrence en la base: "diaria" saltea sábado y domingo */
+export function nextOccurrence(d: string, f: "diaria" | "semanal" | "quincenal" | "mensual"): string {
+  if (f === "semanal") return addDays(d, 7);
+  if (f === "quincenal") return addDays(d, 14);
+  if (f === "mensual") {
+    const x = parseISO(d);
+    const day = x.getUTCDate();
+    const m = new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth() + 1, 1));
+    const last = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 0)).getUTCDate();
+    m.setUTCDate(Math.min(day, last));
+    return toISO(m);
+  }
+  const dow = parseISO(d).getUTCDay(); // 0 domingo … 6 sábado
+  return addDays(d, dow === 5 ? 3 : dow === 6 ? 2 : 1);
+}
+
+export function weekday(s: string): number {
+  return (parseISO(s).getUTCDay() + 6) % 7; // 0 lunes … 6 domingo
+}
+
+export function startOfWeek(s: string): string {
+  return addDays(s, -weekday(s));
+}
+
+const DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
+export const dayName = (s: string) => DIAS[weekday(s)];
+
+/** "14:30:00" → "14:30" */
+export const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");

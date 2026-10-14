@@ -4,13 +4,14 @@ import { useData } from "./DataProvider";
 import { Avatar, ClientTag } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { VoiceDialog } from "./VoiceDialog";
-import { canManageUser, isStaff, teamIds } from "@/lib/permissions";
+import { CalendarView } from "./CalendarView";
+import { canEditTask, isStaff, teamIds } from "@/lib/permissions";
 import { alertFor } from "@/lib/alerts";
-import { addDays, fmtShort, relative } from "@/lib/dates";
+import { addDays, fmtShort, hhmm, relative } from "@/lib/dates";
 import { PRIORITIES, PRIORITY_LABEL, PRIORITY_RANK, STATUS, STATUS_LABEL, type Task, type TaskStatus } from "@/lib/types";
 
 type Scope = "mias" | "equipo" | "todas";
-type View = "lista" | "tablero";
+type View = "lista" | "tablero" | "calendario";
 
 const PREFS = "mr-tareas-prefs";
 
@@ -68,7 +69,7 @@ export function TasksView() {
   // Las que se marcan como hechas acá quedan a la vista (tachadas) hasta recargar, para poder deshacer
   const [justDone, setJustDone] = useState<Set<string>>(new Set());
   const visible = hideDone ? list.filter((t) => t.status !== "hecha" || justDone.has(t.id)) : list;
-  const canEdit = (t: Task) => canManageUser(me, t.assignee_id, profiles);
+  const canEdit = (t: Task) => canEditTask(me, t, profiles);
 
   async function quickUpdate(t: Task, patch: Partial<Task>) {
     const { error } = await save<Task>("tasks", { id: t.id, ...patch });
@@ -197,6 +198,9 @@ export function TasksView() {
             <button className={view === "tablero" ? "on" : ""} onClick={() => setView("tablero")}>
               Tablero
             </button>
+            <button className={view === "calendario" ? "on" : ""} onClick={() => setView("calendario")}>
+              Calendario
+            </button>
           </div>
         </div>
       </div>
@@ -244,6 +248,8 @@ export function TasksView() {
                       </div>
                       <div className={`due ${late ? "late" : ""}`} title={t.due_date ? `Vence ${fmtShort(t.due_date)}` : "Sin fecha"}>
                         {t.due_date ? (done ? fmtShort(t.due_date) : relative(t.due_date, today)) : <span className="muted">—</span>}
+                        {t.start_time && <span className="muted"> · {hhmm(t.start_time)}</span>}
+                        {t.recurring_id && <span title="Se repite"> 🔁</span>}
                       </div>
                       <div className="status" onClick={(e) => e.stopPropagation()}>
                         {editable ? (
@@ -282,6 +288,8 @@ export function TasksView() {
             {filtered ? "No hay tareas con estos filtros." : "No hay tareas abiertas. ¡Sumá una o dictala!"}
           </div>
         )
+      ) : view === "calendario" ? (
+        <CalendarView tasks={visible} onOpen={(t) => setOpen(t)} onNew={(d) => setOpen(d)} selectedId={open?.id} />
       ) : (
         <div className="kanban">
           {STATUS.filter((s) => !(hideDone && s.key === "hecha")).map((s) => {

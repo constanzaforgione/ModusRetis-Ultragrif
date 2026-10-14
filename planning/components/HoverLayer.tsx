@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useData } from "./DataProvider";
 import { Avatar, ClientTag } from "./ui";
 import { alertFor } from "@/lib/alerts";
-import { fmtShort, relative } from "@/lib/dates";
+import { fmtShort, hhmm, relative } from "@/lib/dates";
 import { PRIORITY_LABEL, PROJECT_STATUS_LABEL, STATUS_LABEL } from "@/lib/types";
 
 type Target = { kind: "task" | "project"; id: string; rect: DOMRect };
@@ -94,6 +94,21 @@ export function HoverLayer() {
           <span>{fmtShort(t.start_date)}</span>
           <span>Vence</span>
           <span>{t.due_date ? `${fmtShort(t.due_date)}${t.status !== "hecha" ? ` (${relative(t.due_date, today)})` : ""}` : "Sin fecha"}</span>
+          {t.start_time && (
+            <>
+              <span>Horario</span>
+              <span>
+                {hhmm(t.start_time)}
+                {t.end_time ? ` a ${hhmm(t.end_time)}` : ""}
+              </span>
+            </>
+          )}
+          {t.recurring_id && (
+            <>
+              <span>Repite</span>
+              <span>🔁 Sí</span>
+            </>
+          )}
         </div>
         {t.description && <div className="desc">{t.description}</div>}
         <div className="hint">Clic para abrir y editar</div>

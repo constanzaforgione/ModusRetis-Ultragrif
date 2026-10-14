@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useData } from "./DataProvider";
 import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
-import { assignableProfiles, canDelete, canManageUser, isStaff } from "@/lib/permissions";
+import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permissions";
 import { addMonths, diffDays, fmtMonth, fmtShort, startOfMonth } from "@/lib/dates";
 import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project, type Task } from "@/lib/types";
 
@@ -479,7 +479,7 @@ function ProjectDialog({
                 .sort((a, b) => Number(a.status === "hecha") - Number(b.status === "hecha"))
                 .map((t) => {
                   const done = t.status === "hecha";
-                  const editable = canManageUser(me, t.assignee_id, profiles);
+                  const editable = canEditTask(me, t, profiles);
                   return (
                     <div key={t.id} className={`mini-row ${done ? "done" : ""}`} data-hover-task={t.id}>
                       <button

@@ -15,6 +15,8 @@ export async function GET(req: Request) {
   }
   const db = supabaseAdmin();
   const today = todayISO();
+  // Tareas repetitivas del día (también se crean al abrir la app; no duplica)
+  await db.rpc("spawn_recurring");
 
   const [{ data: profiles, error: e1 }, { data: tasks, error: e2 }] = await Promise.all([
     db.from("profiles").select("*").eq("active", true),
