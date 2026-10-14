@@ -2,7 +2,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useData } from "./DataProvider";
-import { Avatar, CLIENT_COLORS, Modal } from "./ui";
+import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
+import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { canDelete, isStaff } from "@/lib/permissions";
 import { addMonths, diffDays, fmtMonth, fmtShort, startOfMonth } from "@/lib/dates";
 import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project } from "@/lib/types";
@@ -28,7 +29,17 @@ export function RoadmapView() {
   const [only, setOnly] = useState<Set<string>>(new Set());
   const [showInactive, setShowInactive] = useState(false);
   const [editClient, setEditClient] = useState<Partial<Client> | null>(null);
-  const [editProject, setEditProject] = useState<Partial<Project> | null>(null);
+  const [editProject, setEditProjectState] = useState<Partial<Project> | null>(null);
+  const [openTask, setOpenTaskState] = useState<TaskDraft | null>(null);
+  // Un solo panel lateral a la vez: abrir un proyecto cierra la tarea y viceversa
+  const setEditProject = (p: Partial<Project> | null) => {
+    setOpenTaskState(null);
+    setEditProjectState(p);
+  };
+  const setOpenTask = (t: TaskDraft | null) => {
+    setEditProjectState(null);
+    setOpenTaskState(t);
+  };
 
   const to = addMonths(from, span);
   const total = diffDays(to, from);
@@ -182,10 +193,11 @@ export function RoadmapView() {
                       return (
                         <button
                           key={p.id}
-                          className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""}`}
+                          className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""} ${editProject?.id === p.id ? "sel" : ""}`}
                           style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: c.color, color: textOn(c.color) }}
                           onClick={() => setEditProject(p)}
-                          title={`${p.name} · ${fmtShort(p.start_date)} → ${fmtShort(p.end_date)} · ${PROJECT_STATUS_LABEL[p.status]} · ${p.progress}%${owner ? ` · ${owner.full_name}` : ""}`}
+                          data-hover-project={p.id}
+                          aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${p.progress}%${owner ? `, ${owner.full_name}` : ""}`}
                         >
                           <span className="fill" style={{ width: `${p.progress}%` }} />
                           <span className="lbl-in">
@@ -218,7 +230,13 @@ export function RoadmapView() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <i style={{ width: 10, height: 10, borderRadius: 3, background: c.color, display: "inline-block" }} />
-                  {c.name}
+                  {staff ? (
+                    <button className="link" onClick={() => setEditClient(c)} title="Editar cliente">
+                      {c.name}
+                    </button>
+                  ) : (
+                    c.name
+                  )}
                 </h2>
                 <span className="big" style={{ fontSize: 22 }}>
                   {st?.total ? Math.round((st.done / st.total) * 100) : 0}%
@@ -233,10 +251,23 @@ export function RoadmapView() {
                 ))}
               </div>
               {c.description && <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>{c.description}</p>}
-              <div style={{ marginTop: 10 }}>
+              {active.length > 0 && (
+                <div className="mini-list" style={{ marginTop: 12 }}>
+                  {active.map((p) => (
+                    <button key={p.id} onClick={() => setEditProject(p)} data-hover-project={p.id} className={editProject?.id === p.id ? "sel" : ""}>
+                      <span className="t">{p.name}</span>
+                      <span className="mono muted">{p.progress}%</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <Link href={`/tareas?cliente=${c.id}`} className="btn sm">
                   Ver tareas →
                 </Link>
+                <button className="btn sm" onClick={() => setOpenTask({ client_id: c.id })}>
+                  + Tarea
+                </button>
               </div>
             </div>
           );
@@ -244,7 +275,10 @@ export function RoadmapView() {
       </div>
 
       {editClient && <ClientDialog client={editClient} onClose={() => setEditClient(null)} />}
-      {editProject && <ProjectDialog project={editProject} onClose={() => setEditProject(null)} />}
+      {editProject && (
+        <ProjectDialog key={editProject.id ?? "nuevo"} project={editProject} onClose={() => setEditProject(null)} onOpenTask={setOpenTask} />
+      )}
+      {openTask && <TaskDrawer key={openTask.id ?? "nueva"} task={openTask} onClose={() => setOpenTask(null)} />}
     </>
   );
 }
@@ -314,7 +348,15 @@ function ClientDialog({ client, onClose }: { client: Partial<Client>; onClose: (
   );
 }
 
-function ProjectDialog({ project, onClose }: { project: Partial<Project>; onClose: () => void }) {
+function ProjectDialog({
+  project,
+  onClose,
+  onOpenTask,
+}: {
+  project: Partial<Project>;
+  onClose: () => void;
+  onOpenTask: (t: TaskDraft) => void;
+}) {
   const { me, clients, profiles, tasks, save, remove, toast } = useData();
   const staff = isStaff(me);
   const [f, setF] = useState<Partial<Project>>({ client_id: clients.find((c) => c.active)?.id, ...project });
@@ -347,7 +389,7 @@ function ProjectDialog({ project, onClose }: { project: Partial<Project>; onClos
   }
 
   return (
-    <Modal
+    <SidePanel
       title={isNew ? "Nuevo proyecto" : staff ? "Editar proyecto" : project.name}
       onClose={onClose}
       footer={
@@ -410,18 +452,29 @@ function ProjectDialog({ project, onClose }: { project: Partial<Project>; onClos
           <input type="range" min={0} max={100} step={5} value={f.progress ?? 0} onChange={(e) => setF({ ...f, progress: Number(e.target.value) })} disabled={!staff} />
         </label>
       </div>
-      {linked.length > 0 && (
+      {!isNew && (
         <div className="field">
-          <span>Tareas vinculadas ({linked.filter((t) => t.status === "hecha").length}/{linked.length} hechas)</span>
-          {linked.slice(0, 12).map((t) => (
-            <div key={t.id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-              <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
-              <span style={{ flex: 1 }}>{t.title}</span>
-              <Avatar p={profiles.find((p) => p.id === t.assignee_id)} sm />
+          <span>
+            Tareas del proyecto ({linked.filter((t) => t.status === "hecha").length}/{linked.length} hechas)
+          </span>
+          {linked.length > 0 && (
+            <div className="mini-list">
+              {linked.map((t) => (
+                <button key={t.id} onClick={() => onOpenTask(t)} data-hover-task={t.id}>
+                  <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
+                  <span className="t">{t.title}</span>
+                  <Avatar p={profiles.find((p) => p.id === t.assignee_id)} sm />
+                </button>
+              ))}
             </div>
-          ))}
+          )}
+          <div>
+            <button className="btn sm" onClick={() => onOpenTask({ client_id: project.client_id, project_id: project.id })}>
+              + Tarea en este proyecto
+            </button>
+          </div>
         </div>
       )}
-    </Modal>
+    </SidePanel>
   );
 }

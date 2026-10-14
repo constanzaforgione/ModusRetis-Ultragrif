@@ -55,6 +55,9 @@ igual funciona, pero carga el texto como una sola tarea.
 1. Crear un proyecto en [supabase.com](https://supabase.com) (región São Paulo queda cerca).
 2. **SQL Editor** → pegar y correr `supabase/migrations/0001_init.sql`, después `supabase/seed.sql`
    (carga Modus Retis, Meli Retis, Ultragrif, Placebo y Odoo).
+   Para traer el planning de Lytton (25 tareas y 11 proyectos), correr `supabase/import_planning_lytton.sql`
+   después de que el admin haya entrado a la app. Se puede volver a correr cuando entre el resto del equipo:
+   no duplica nada y les pasa las tareas que estaban esperando a su responsable.
 3. **Authentication → URL Configuration**: *Site URL* = la URL de Vercel, y en *Redirect URLs* agregar
    `https://<tu-app>.vercel.app/auth/callback` y `http://localhost:3000/auth/callback`.
 4. (Opcional) **Authentication → Providers → Google** para entrar con Google.

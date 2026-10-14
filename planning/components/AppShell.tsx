@@ -5,6 +5,7 @@ import { useEffect, useMemo } from "react";
 import { useData } from "./DataProvider";
 import { Avatar } from "./ui";
 import { Iso } from "./Logo";
+import { HoverLayer } from "./HoverLayer";
 import { alertsFor } from "@/lib/alerts";
 import { ROLE_LABEL } from "@/lib/types";
 
@@ -84,6 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className="main">{loading ? <div className="empty">Cargando…</div> : children}</main>
+      <HoverLayer />
     </>
   );
 }

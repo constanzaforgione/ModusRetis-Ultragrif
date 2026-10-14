@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useData } from "./DataProvider";
-import { Modal } from "./ui";
+import { SidePanel } from "./ui";
 import { useSpeech } from "./useSpeech";
 import { assignableProfiles, canDelete, canManageUser } from "@/lib/permissions";
 import { PRIORITIES, STATUS, type Task } from "@/lib/types";
@@ -71,8 +71,7 @@ export function TaskDrawer({ task, onClose }: { task: TaskDraft; onClose: () => 
   const creator = task.created_by ? byId.profile.get(task.created_by) : undefined;
 
   return (
-    <Modal
-      side
+    <SidePanel
       title={isNew ? "Nueva tarea" : editable ? "Editar tarea" : "Detalle de la tarea"}
       onClose={onClose}
       footer={
@@ -202,6 +201,6 @@ export function TaskDrawer({ task, onClose }: { task: TaskDraft; onClose: () => 
           {task.completed_at ? ` · cerrada el ${fmtShort(task.completed_at)}` : ""}
         </div>
       )}
-    </Modal>
+    </SidePanel>
   );
 }

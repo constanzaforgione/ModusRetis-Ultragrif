@@ -42,7 +42,7 @@ export function AttentionView() {
   const unread = notifications.filter((n) => !n.read_at);
 
   const Item = ({ a, showPerson }: { a: Alert; showPerson?: boolean }) => (
-    <div className="item" onClick={() => setOpen(a.task)}>
+    <div className={`item ${open?.id === a.task.id ? "sel" : ""}`} onClick={() => setOpen(a.task)} data-hover-task={a.task.id}>
       <span className={`pill k-${a.kind}`}>{ALERT_META[a.kind].label}</span>
       <div>{a.task.title}</div>
       <div className="meta">
@@ -143,7 +143,7 @@ export function AttentionView() {
         </>
       )}
 
-      {open && <TaskDrawer task={open} onClose={() => setOpen(null)} />}
+      {open && <TaskDrawer key={open.id} task={open} onClose={() => setOpen(null)} />}
     </>
   );
 }

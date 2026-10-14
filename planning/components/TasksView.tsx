@@ -212,7 +212,7 @@ export function TasksView() {
                   const done = t.status === "hecha";
                   const late = !done && t.due_date && t.due_date < today;
                   return (
-                    <div key={t.id} className={`trow ${done ? "done" : ""}`} onClick={() => setOpen(t)}>
+                    <div key={t.id} className={`trow ${done ? "done" : ""} ${open?.id === t.id ? "sel" : ""}`} onClick={() => setOpen(t)} data-hover-task={t.id}>
                       <button
                         className={`check ${done ? "on" : ""}`}
                         disabled={!editable}
@@ -228,6 +228,7 @@ export function TasksView() {
                         <span className="t">{t.title}</span>
                         <small>
                           <ClientTag c={t.client_id ? byId.client.get(t.client_id) : undefined} />
+                          {t.project_id && byId.project.get(t.project_id) ? ` · ${byId.project.get(t.project_id)!.name}` : ""}
                           {t.description ? ` · ${t.description}` : ""}
                         </small>
                       </div>
@@ -311,7 +312,8 @@ export function TasksView() {
                   return (
                     <div
                       key={t.id}
-                      className={`card ${alert && (alert.kind === "vencida" || alert.kind === "bloqueada") ? "alert" : ""} ${dragId === t.id ? "dragging" : ""}`}
+                      className={`card ${alert && (alert.kind === "vencida" || alert.kind === "bloqueada") ? "alert" : ""} ${dragId === t.id ? "dragging" : ""} ${open?.id === t.id ? "sel" : ""}`}
+                      data-hover-task={t.id}
                       draggable={editable}
                       onDragStart={() => setDragId(t.id)}
                       onDragEnd={() => setDragId(null)}
@@ -336,7 +338,7 @@ export function TasksView() {
         </div>
       )}
 
-      {open && <TaskDrawer task={open} onClose={() => setOpen(null)} />}
+      {open && <TaskDrawer key={open.id ?? "nueva"} task={open} onClose={() => setOpen(null)} />}
       {voice && <VoiceDialog onClose={() => setVoice(false)} />}
     </>
   );

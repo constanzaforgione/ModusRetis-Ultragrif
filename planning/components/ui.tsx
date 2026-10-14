@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import type { Client, Profile } from "@/lib/types";
 
 const PALETTE = ["#304cd3", "#00a9b0", "#8b5cf6", "#e8930c", "#2f9e57", "#d64545", "#0ea5e9", "#db2777"];
@@ -69,5 +70,46 @@ export function Modal({
         {footer && <div className="sheet-f">{footer}</div>}
       </div>
     </div>
+  );
+}
+
+/**
+ * Panel lateral derecho, sin tapar la pantalla: la lista sigue visible y clickeable al lado,
+ * así se puede pasar de una tarea a otra sin cerrar. Esc o ✕ lo cierran.
+ */
+export function SidePanel({
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  title: React.ReactNode;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  useEffect(() => {
+    document.body.classList.add("has-side");
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.classList.remove("has-side");
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  return (
+    <aside className="side" role="complementary" aria-label={typeof title === "string" ? title : "Detalle"}>
+      <div className="sheet-h">
+        <h2>{title}</h2>
+        <button className="btn ghost sm" onClick={onClose} aria-label="Cerrar" title="Cerrar (Esc)">
+          ✕
+        </button>
+      </div>
+      <div className="sheet-b">{children}</div>
+      {footer && <div className="sheet-f">{footer}</div>}
+    </aside>
   );
 }
