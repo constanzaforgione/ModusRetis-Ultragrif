@@ -224,7 +224,7 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 .mini-list > button { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 0; border-top: 1px solid var(--grid); background: var(--surface); text-align: left; cursor: pointer; font-size: 13px; }
 .mini-list > button:first-child { border-top: 0; }
 .mini-list > button:hover { background: var(--surface2); }
-.mini-list > .mini-row { display: flex; gap: 8px; align-items: center; padding: 7px 10px; border-top: 1px solid var(--grid); background: var(--surface); font-size: 13px; }
+.mini-list > .mini-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; align-items: center; padding: 9px 10px; border-top: 1px solid var(--grid); background: var(--surface); font-size: 13px; }
 .mini-list > .mini-row:first-child { border-top: 0; }
 .mini-list > .mini-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-list > .mini-row.done .t { text-decoration: line-through; color: var(--muted); }
@@ -376,3 +376,16 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
   .table td[data-label]::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
   .table select { width: 100%; }
 }
+
+/* tareas dentro del panel del proyecto: estado y responsable editables en la misma fila */
+.mini-ctrls { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mini-ctrls select { font-size: 12px; padding: 4px 8px; max-width: 100%; }
+.mini-ctrls select.pill { border: 0; padding: 3px 6px; }
+.mini-row.done .mini-ctrls { opacity: 1; }
+
+/* flecha para volver en el panel lateral */
+.side-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.side-title h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-title .crumb { font-size: 11.5px; color: var(--muted); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.back { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); font-size: 17px; font-weight: 700; cursor: pointer; display: grid; place-items: center; }
+.back:hover { border-color: var(--primary); color: var(--primary); }

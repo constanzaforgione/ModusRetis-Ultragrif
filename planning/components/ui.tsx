@@ -82,11 +82,14 @@ export function SidePanel({
   onClose,
   children,
   footer,
+  back,
 }: {
   title: React.ReactNode;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Flecha arriba a la izquierda para volver a lo que se estaba viendo (ej.: el proyecto) */
+  back?: { label: string; onClick: () => void };
 }) {
   useEffect(() => {
     document.body.classList.add("has-side");
@@ -103,7 +106,17 @@ export function SidePanel({
   return (
     <aside className="side" role="complementary" aria-label={typeof title === "string" ? title : "Detalle"}>
       <div className="sheet-h">
-        <h2>{title}</h2>
+        <div className="side-title">
+          {back && (
+            <button className="back" onClick={back.onClick} aria-label={`Volver a ${back.label}`} title={`Volver a ${back.label}`}>
+              ←
+            </button>
+          )}
+          <div style={{ minWidth: 0 }}>
+            {back && <div className="crumb">{back.label}</div>}
+            <h2>{title}</h2>
+          </div>
+        </div>
         <button className="btn ghost sm" onClick={onClose} aria-label="Cerrar" title="Cerrar (Esc)">
           ✕
         </button>

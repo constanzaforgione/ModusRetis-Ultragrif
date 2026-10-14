@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useData } from "./DataProvider";
 import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
-import { canDelete, canManageUser, isStaff } from "@/lib/permissions";
+import { assignableProfiles, canDelete, canManageUser, isStaff } from "@/lib/permissions";
 import { addMonths, diffDays, fmtMonth, fmtShort, startOfMonth } from "@/lib/dates";
 import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project, type Task } from "@/lib/types";
 
@@ -36,10 +36,14 @@ export function RoadmapView() {
     setOpenTaskState(null);
     setEditProjectState(p);
   };
-  const setOpenTask = (t: TaskDraft | null) => {
+  // Proyecto desde el que se abrió la tarea, para poder volver con la flecha
+  const [returnTo, setReturnTo] = useState<Partial<Project> | null>(null);
+  const setOpenTask = (t: TaskDraft | null, from: Partial<Project> | null = null) => {
     setEditProjectState(null);
+    setReturnTo(from);
     setOpenTaskState(t);
   };
+  const backProject = returnTo ? (projects.find((p) => p.id === returnTo.id) ?? returnTo) : null;
 
   const to = addMonths(from, span);
   const total = diffDays(to, from);
@@ -276,9 +280,16 @@ export function RoadmapView() {
 
       {editClient && <ClientDialog client={editClient} onClose={() => setEditClient(null)} />}
       {editProject && (
-        <ProjectDialog key={editProject.id ?? "nuevo"} project={editProject} onClose={() => setEditProject(null)} onOpenTask={setOpenTask} />
+        <ProjectDialog key={editProject.id ?? "nuevo"} project={editProject} onClose={() => setEditProject(null)} onOpenTask={(t) => setOpenTask(t, editProject)} />
       )}
-      {openTask && <TaskDrawer key={openTask.id ?? "nueva"} task={openTask} onClose={() => setOpenTask(null)} />}
+      {openTask && (
+        <TaskDrawer
+          key={openTask.id ?? "nueva"}
+          task={openTask}
+          onClose={() => setOpenTask(null)}
+          back={backProject ? { label: backProject.name ?? "Proyecto", onClick: () => setEditProject(backProject) } : undefined}
+        />
+      )}
     </>
   );
 }
@@ -381,10 +392,11 @@ function ProjectDialog({
     toast(isNew ? "Proyecto agregado al roadmap" : "Proyecto actualizado");
     onClose();
   }
-  async function toggleDone(t: Task) {
-    const { error } = await save<Task>("tasks", { id: t.id, status: t.status === "hecha" ? "pendiente" : "hecha" });
+  async function quickSave(t: Task, patch: Partial<Task>) {
+    const { error } = await save<Task>("tasks", { id: t.id, ...patch });
     if (error) toast(error, true);
   }
+  const toggleDone = (t: Task) => quickSave(t, { status: t.status === "hecha" ? "pendiente" : "hecha" });
   async function del() {
     if (!project.id || !confirm(`¿Borrar el proyecto "${project.name}"?`)) return;
     const err = await remove("projects", project.id);
@@ -478,11 +490,47 @@ function ProjectDialog({
                       >
                         {done ? "✓" : ""}
                       </button>
-                      <button className="link t" onClick={() => onOpenTask(t)}>
+                      <button className="link t" onClick={() => onOpenTask(t)} title="Abrir la tarea">
                         {t.title}
                       </button>
-                      <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
-                      <Avatar p={profiles.find((p) => p.id === t.assignee_id)} sm />
+                      <div className="mini-ctrls">
+                        {editable ? (
+                          <>
+                            <select
+                              value={t.status}
+                              onChange={(e) => quickSave(t, { status: e.target.value as Task["status"] })}
+                              className={`pill s-${t.status}`}
+                              aria-label="Estado"
+                            >
+                              {STATUS.map((s) => (
+                                <option key={s.key} value={s.key}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </select>
+                            <select value={t.assignee_id} onChange={(e) => quickSave(t, { assignee_id: e.target.value })} aria-label="Responsable">
+                              {(() => {
+                                const list = assignableProfiles(me, profiles);
+                                const cur = profiles.find((p) => p.id === t.assignee_id);
+                                return (cur && !list.includes(cur) ? [cur, ...list] : list).map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.full_name}
+                                    {p.id === me.id ? " (yo)" : ""}
+                                  </option>
+                                ));
+                              })()}
+                            </select>
+                          </>
+                        ) : (
+                          <>
+                            <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
+                            <span className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                              <Avatar p={profiles.find((p) => p.id === t.assignee_id)} sm />
+                              {profiles.find((p) => p.id === t.assignee_id)?.full_name}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

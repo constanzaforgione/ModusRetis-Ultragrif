@@ -9,7 +9,17 @@ import { fmtShort } from "@/lib/dates";
 
 export type TaskDraft = Partial<Task>;
 
-export function TaskDrawer({ task, onClose }: { task: TaskDraft; onClose: () => void }) {
+export function TaskDrawer({
+  task,
+  onClose,
+  back,
+}: {
+  task: TaskDraft;
+  onClose: () => void;
+  /** Si se abrió desde un proyecto: la flecha, Cancelar y Guardar vuelven al proyecto */
+  back?: { label: string; onClick: () => void };
+}) {
+  const done = back?.onClick ?? onClose;
   const { me, profiles, clients, projects, save, remove, toast, byId } = useData();
   const isNew = !task.id;
   const [f, setF] = useState<TaskDraft>({
@@ -57,7 +67,7 @@ export function TaskDrawer({ task, onClose }: { task: TaskDraft; onClose: () => 
     setBusy(false);
     if (error) return toast(error, true);
     toast(isNew ? "Tarea creada" : "Cambios guardados");
-    onClose();
+    done();
   }
 
   async function del() {
@@ -65,7 +75,7 @@ export function TaskDrawer({ task, onClose }: { task: TaskDraft; onClose: () => 
     const err = await remove("tasks", task.id);
     if (err) return toast(err, true);
     toast("Tarea borrada");
-    onClose();
+    done();
   }
 
   const creator = task.created_by ? byId.profile.get(task.created_by) : undefined;
@@ -74,6 +84,7 @@ export function TaskDrawer({ task, onClose }: { task: TaskDraft; onClose: () => 
     <SidePanel
       title={isNew ? "Nueva tarea" : editable ? "Editar tarea" : "Detalle de la tarea"}
       onClose={onClose}
+      back={back}
       footer={
         <>
           <div>
@@ -84,8 +95,8 @@ export function TaskDrawer({ task, onClose }: { task: TaskDraft; onClose: () => 
             )}
           </div>
           <div className="actions">
-            <button className="btn" onClick={onClose}>
-              {editable ? "Cancelar" : "Cerrar"}
+            <button className="btn" onClick={done}>
+              {back ? "Volver" : editable ? "Cancelar" : "Cerrar"}
             </button>
             {editable && (
               <button className="btn primary" onClick={submit} disabled={busy}>
