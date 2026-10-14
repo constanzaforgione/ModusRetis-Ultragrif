@@ -321,3 +321,58 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 13px; z-index: 80; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
 .toast.err { background: var(--danger); color: #fff; }
+
+/* ---------- confirmación del dictado ---------- */
+.confirm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.confirm-list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-top: 1px solid var(--grid); }
+.confirm-list li:first-child { border-top: 0; }
+.confirm-list li .pill { margin-top: 2px; }
+.diff { font-size: 12.5px; margin-top: 3px; }
+.diff s { color: var(--muted); }
+
+/* ---------- celular ---------- */
+@media (max-width: 760px) {
+  /* 16px evita que iOS haga zoom al tocar un campo */
+  input[type="text"], input[type="email"], input[type="search"], input[type="date"], select, textarea { font-size: 16px; }
+  .page-head .actions { width: 100%; }
+  .page-head .actions .btn { flex: 1; padding: 11px 12px; }
+  .btn { min-height: 38px; }
+  .check { width: 26px; height: 26px; }
+  .trow { padding: 11px 12px; }
+
+  /* modales como hoja que sube desde abajo */
+  .scrim.center { padding: 0; align-items: flex-end; }
+  .modal { width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; }
+  .sheet-h, .sheet-b, .sheet-f { padding-left: 16px; padding-right: 16px; }
+  .sheet-f { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  .sheet-f .actions { flex: 1; justify-content: flex-end; }
+
+  /* panel lateral a pantalla completa */
+  .side { width: 100%; border-left: 0; box-shadow: none; }
+
+  /* roadmap: columna de clientes más angosta, la línea de tiempo se desliza */
+  .gantt-in { min-width: 680px; }
+  .g-row { grid-template-columns: 116px minmax(0, 1fr); }
+  .g-label { padding: 8px; }
+  .g-label b { font-size: 13px; }
+  .g-label small { font-size: 10.5px; }
+
+  /* tablero: una columna por pantalla, se pasa deslizando */
+  .kanban { grid-auto-columns: 82vw; scroll-snap-type: x mandatory; }
+  .col { scroll-snap-align: start; }
+
+  .att, .cards { grid-template-columns: 1fr; }
+  .panel { padding: 14px; }
+  .hovercard { display: none; }
+}
+
+/* Equipo en celular: cada persona como tarjeta en vez de tabla */
+@media (max-width: 760px) {
+  .table thead { display: none; }
+  .table, .table tbody { display: block; }
+  .table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid var(--grid); }
+  .table td { display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; }
+  .table td:first-child { grid-column: 1 / -1; }
+  .table td[data-label]::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .table select { width: 100%; }
+}

@@ -77,7 +77,7 @@ export function TeamView() {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Rol">
                       {admin && p.id !== me.id ? (
                         <select value={p.role} onChange={(e) => update(p, { role: e.target.value as Role })}>
                           {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
@@ -90,7 +90,7 @@ export function TeamView() {
                         ROLE_LABEL[p.role]
                       )}
                     </td>
-                    <td>
+                    <td data-label="Líder">
                       {admin && p.role !== "admin" ? (
                         <select value={p.lead_id ?? ""} onChange={(e) => update(p, { lead_id: e.target.value || null })}>
                           <option value="">—</option>
@@ -106,9 +106,9 @@ export function TeamView() {
                         (p.lead_id && profiles.find((l) => l.id === p.lead_id)?.full_name) || "—"
                       )}
                     </td>
-                    <td className="mono">{open.length}</td>
-                    <td className={`mono ${late ? "late" : ""}`}>{late}</td>
-                    <td>
+                    <td data-label="Abiertas" className="mono">{open.length}</td>
+                    <td data-label="Vencidas" className={`mono ${late ? "late" : ""}`}>{late}</td>
+                    <td data-label="Activa">
                       <input
                         type="checkbox"
                         checked={p.active}
