@@ -65,12 +65,15 @@ export function TasksView() {
       );
   }, [tasks, scope, me.id, team, client, person, priority, q]);
 
-  const visible = hideDone ? list.filter((t) => t.status !== "hecha") : list;
+  // Las que se marcan como hechas acá quedan a la vista (tachadas) hasta recargar, para poder deshacer
+  const [justDone, setJustDone] = useState<Set<string>>(new Set());
+  const visible = hideDone ? list.filter((t) => t.status !== "hecha" || justDone.has(t.id)) : list;
   const canEdit = (t: Task) => canManageUser(me, t.assignee_id, profiles);
 
   async function quickUpdate(t: Task, patch: Partial<Task>) {
     const { error } = await save<Task>("tasks", { id: t.id, ...patch });
-    if (error) toast(error, true);
+    if (error) return toast(error, true);
+    if (patch.status === "hecha") setJustDone((s) => new Set(s).add(t.id));
   }
 
   const groups = useMemo(() => {
@@ -85,12 +88,12 @@ export function TasksView() {
     ];
     for (const t of visible) {
       const i =
-        t.status === "hecha" ? 5 : !t.due_date ? 4 : t.due_date < today ? 0 : t.due_date === today ? 1 : t.due_date <= week ? 2 : 3;
+        t.status === "hecha" && !justDone.has(t.id) ? 5 : !t.due_date ? 4 : t.due_date < today ? 0 : t.due_date === today ? 1 : t.due_date <= week ? 2 : 3;
       g[i].items.push(t);
     }
     g[5].items.sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
     return g.filter((x) => x.items.length);
-  }, [visible, today]);
+  }, [visible, today, justDone]);
 
   const peopleOptions = scope === "mias" ? [] : profiles.filter((p) => p.active && (scope === "todas" || team.has(p.id)));
   const filtered = client || person || priority || q;
@@ -312,7 +315,7 @@ export function TasksView() {
                   return (
                     <div
                       key={t.id}
-                      className={`card ${alert && (alert.kind === "vencida" || alert.kind === "bloqueada") ? "alert" : ""} ${dragId === t.id ? "dragging" : ""} ${open?.id === t.id ? "sel" : ""}`}
+                      className={`card ${alert && (alert.kind === "vencida" || alert.kind === "bloqueada") ? "alert" : ""} ${dragId === t.id ? "dragging" : ""} ${open?.id === t.id ? "sel" : ""} ${t.status === "hecha" ? "done" : ""}`}
                       data-hover-task={t.id}
                       draggable={editable}
                       onDragStart={() => setDragId(t.id)}

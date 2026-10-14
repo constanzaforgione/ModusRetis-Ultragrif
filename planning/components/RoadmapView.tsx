@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useData } from "./DataProvider";
 import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
-import { canDelete, isStaff } from "@/lib/permissions";
+import { canDelete, canManageUser, isStaff } from "@/lib/permissions";
 import { addMonths, diffDays, fmtMonth, fmtShort, startOfMonth } from "@/lib/dates";
-import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project } from "@/lib/types";
+import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project, type Task } from "@/lib/types";
 
 /** Texto blanco u oscuro según qué se lee mejor sobre el color del cliente */
 function textOn(hex: string) {
@@ -381,6 +381,10 @@ function ProjectDialog({
     toast(isNew ? "Proyecto agregado al roadmap" : "Proyecto actualizado");
     onClose();
   }
+  async function toggleDone(t: Task) {
+    const { error } = await save<Task>("tasks", { id: t.id, status: t.status === "hecha" ? "pendiente" : "hecha" });
+    if (error) toast(error, true);
+  }
   async function del() {
     if (!project.id || !confirm(`¿Borrar el proyecto "${project.name}"?`)) return;
     const err = await remove("projects", project.id);
@@ -459,13 +463,29 @@ function ProjectDialog({
           </span>
           {linked.length > 0 && (
             <div className="mini-list">
-              {linked.map((t) => (
-                <button key={t.id} onClick={() => onOpenTask(t)} data-hover-task={t.id}>
-                  <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
-                  <span className="t">{t.title}</span>
-                  <Avatar p={profiles.find((p) => p.id === t.assignee_id)} sm />
-                </button>
-              ))}
+              {[...linked]
+                .sort((a, b) => Number(a.status === "hecha") - Number(b.status === "hecha"))
+                .map((t) => {
+                  const done = t.status === "hecha";
+                  const editable = canManageUser(me, t.assignee_id, profiles);
+                  return (
+                    <div key={t.id} className={`mini-row ${done ? "done" : ""}`} data-hover-task={t.id}>
+                      <button
+                        className={`check ${done ? "on" : ""}`}
+                        disabled={!editable}
+                        title={editable ? (done ? "Reabrir" : "Marcar como hecha") : "Solo la persona asignada o su líder"}
+                        onClick={() => toggleDone(t)}
+                      >
+                        {done ? "✓" : ""}
+                      </button>
+                      <button className="link t" onClick={() => onOpenTask(t)}>
+                        {t.title}
+                      </button>
+                      <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
+                      <Avatar p={profiles.find((p) => p.id === t.assignee_id)} sm />
+                    </div>
+                  );
+                })}
             </div>
           )}
           <div>
