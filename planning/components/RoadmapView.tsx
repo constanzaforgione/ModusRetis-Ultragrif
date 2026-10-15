@@ -215,7 +215,7 @@ export function RoadmapView() {
         </div>
         <div className="field" style={{ flex: "1 1 300px" }}>
           <span>{groupBy === "cliente" ? "Clientes" : "Colaboradores"}</span>
-          <div className="chips">
+          <div className="chips one-line">
             {groupBy === "cliente"
               ? clients
                   .filter((c) => showInactive || c.active)
