@@ -449,3 +449,12 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
   .cal-dow { padding: 6px 3px; font-size: 10px; text-align: center; }
   .cal-bar .spacer { display: none; }
 }
+
+/* roadmap por semana: tareas de cada semana debajo de los proyectos */
+.g-lane .gl.cur { background: var(--now); }
+.g-wk { position: relative; z-index: 1; display: grid; margin-top: 4px; }
+.g-wkcell { display: flex; flex-direction: column; gap: 3px; padding: 2px 4px; min-width: 0; }
+.g-wkcell .cal-chip { font-size: 11px; }
+.g-more { font-size: 11px; color: var(--muted); font-weight: 600; padding-left: 4px; }
+.g-label b .avatar { margin-right: 2px; }
+.chip .avatar { margin-left: -4px; }

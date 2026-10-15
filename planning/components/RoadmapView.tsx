@@ -5,7 +5,7 @@ import { useData } from "./DataProvider";
 import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permissions";
-import { addMonths, diffDays, fmtMonth, fmtShort, startOfMonth } from "@/lib/dates";
+import { addDays, addMonths, diffDays, fmtMonth, fmtShort, startOfMonth, startOfWeek } from "@/lib/dates";
 import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project, type Task } from "@/lib/types";
 
 /** Texto blanco u oscuro según qué se lee mejor sobre el color del cliente */
@@ -15,17 +15,23 @@ function textOn(hex: string) {
   return 0.299 * r + 0.587 * g + 0.114 * b > 170 ? "#111827" : "#ffffff";
 }
 
-const SPANS = [
-  { n: 3, label: "Trimestre" },
-  { n: 6, label: "Semestre" },
-  { n: 12, label: "Año" },
+type Unit = "w" | "m";
+const SPANS: { key: string; label: string; unit: Unit; n: number }[] = [
+  { key: "semanas", label: "Semanas", unit: "w", n: 8 },
+  { key: "trimestre", label: "Trimestre", unit: "m", n: 3 },
+  { key: "semestre", label: "Semestre", unit: "m", n: 6 },
+  { key: "anio", label: "Año", unit: "m", n: 12 },
 ];
+const defaultFrom = (unit: Unit, today: string) => (unit === "w" ? addDays(startOfWeek(today), -7) : addMonths(startOfMonth(today), -1));
+const MAX_CHIPS = 3;
 
 export function RoadmapView() {
-  const { me, clients, projects, tasks, today, byId } = useData();
+  const { me, clients, projects, tasks, profiles, today, byId } = useData();
   const staff = isStaff(me);
-  const [span, setSpan] = useState(6);
-  const [from, setFrom] = useState(() => addMonths(startOfMonth(today), -1));
+  const [spanKey, setSpanKey] = useState("semestre");
+  const span = SPANS.find((s) => s.key === spanKey)!;
+  const [from, setFrom] = useState(() => defaultFrom("m", today));
+  const [groupBy, setGroupBy] = useState<"cliente" | "colaborador">("cliente");
   const [only, setOnly] = useState<Set<string>>(new Set());
   const [showInactive, setShowInactive] = useState(false);
   const [editClient, setEditClient] = useState<Partial<Client> | null>(null);
@@ -45,12 +51,28 @@ export function RoadmapView() {
   };
   const backProject = returnTo ? (projects.find((p) => p.id === returnTo.id) ?? returnTo) : null;
 
-  const to = addMonths(from, span);
+  const weekly = span.unit === "w";
+  const to = weekly ? addDays(from, span.n * 7) : addMonths(from, span.n);
   const total = diffDays(to, from);
   const pct = (d: string) => Math.max(0, Math.min(100, (diffDays(d, from) / total) * 100));
-  const months = Array.from({ length: span }, (_, i) => addMonths(from, i));
+  // Columnas de la línea de tiempo: semanas (lunes) o meses
+  const cols = Array.from({ length: span.n }, (_, i) => (weekly ? addDays(from, i * 7) : addMonths(from, i)));
+  const colEnd = (c: string) => (weekly ? addDays(c, 7) : addMonths(c, 1));
+  const curCol = weekly ? startOfWeek(today) : startOfMonth(today);
+  const move = (n: number) => setFrom(weekly ? addDays(from, 7 * n) : addMonths(from, n));
+  const pickSpan = (key: string) => {
+    const next = SPANS.find((s) => s.key === key)!;
+    if (next.unit !== span.unit) setFrom(defaultFrom(next.unit, today));
+    setSpanKey(key);
+  };
 
   const visibleClients = clients.filter((c) => (showInactive || c.active) && (!only.size || only.has(c.id)));
+  const NO_OWNER = "sin-responsable";
+  const people = profiles.filter((p) => p.active || projects.some((x) => x.owner_id === p.id));
+  const visiblePeople = [
+    ...people.filter((p) => !only.size || only.has(p.id)),
+    ...(projects.some((x) => !x.owner_id) && (!only.size || only.has(NO_OWNER)) ? [null] : []),
+  ];
 
   const stats = useMemo(() => {
     const m = new Map<string, { open: number; late: number; done: number; total: number; byStatus: Record<string, number> }>();
@@ -69,6 +91,65 @@ export function RoadmapView() {
     return m;
   }, [tasks, today]);
 
+  // Filas de la línea de tiempo según "Ver por"
+  type Row = { key: string; label: React.ReactNode; sub: React.ReactNode; projects: Project[]; tasks: Task[] };
+  const inRange = (p: Project) => p.end_date >= from && p.start_date < to;
+  const rows: Row[] =
+    groupBy === "cliente"
+      ? visibleClients.map((c) => {
+          const st = stats.get(c.id);
+          return {
+            key: c.id,
+            label: (
+              <b>
+                <i style={{ background: c.color }} />
+                {staff ? (
+                  <button className="btn ghost sm" style={{ padding: 0, fontWeight: 800, fontSize: 14 }} onClick={() => setEditClient(c)} title="Editar cliente">
+                    {c.name}
+                  </button>
+                ) : (
+                  c.name
+                )}
+              </b>
+            ),
+            sub: (
+              <>
+                {st?.open ?? 0} tareas abiertas
+                {st?.late ? <span className="late"> · {st.late} vencidas</span> : null}
+              </>
+            ),
+            projects: projects.filter((p) => p.client_id === c.id && inRange(p)),
+            tasks: tasks.filter((t) => t.client_id === c.id),
+          };
+        })
+      : visiblePeople.map((p) => {
+          const mine = p ? tasks.filter((t) => t.assignee_id === p.id) : [];
+          const open = mine.filter((t) => t.status !== "hecha");
+          const late = open.filter((t) => t.due_date && t.due_date < today).length;
+          return {
+            key: p?.id ?? NO_OWNER,
+            label: p ? (
+              <b>
+                <Avatar p={p} sm />
+                {p.full_name}
+              </b>
+            ) : (
+              <b className="muted">Sin responsable</b>
+            ),
+            sub: p ? (
+              <>
+                {open.length} tareas abiertas
+                {late ? <span className="late"> · {late} vencidas</span> : null}
+              </>
+            ) : (
+              "Proyectos sin asignar"
+            ),
+            projects: projects.filter((x) => (p ? x.owner_id === p.id : !x.owner_id) && inRange(x)),
+            tasks: mine,
+          };
+        });
+
+
   const toggleOnly = (id: string) =>
     setOnly((s) => {
       const n = new Set(s);
@@ -81,7 +162,7 @@ export function RoadmapView() {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Roadmap por cliente</div>
+          <div className="eyebrow">Roadmap por {groupBy === "cliente" ? "cliente" : "colaborador"}</div>
           <h1>
             Línea de tiempo de <em>proyectos</em>
           </h1>
@@ -100,10 +181,21 @@ export function RoadmapView() {
 
       <div className="filters">
         <div className="field">
+          <span>Ver por</span>
+          <div className="seg">
+            <button className={groupBy === "cliente" ? "on" : ""} onClick={() => (setGroupBy("cliente"), setOnly(new Set()))}>
+              Cliente
+            </button>
+            <button className={groupBy === "colaborador" ? "on" : ""} onClick={() => (setGroupBy("colaborador"), setOnly(new Set()))}>
+              Colaborador
+            </button>
+          </div>
+        </div>
+        <div className="field">
           <span>Período</span>
           <div className="seg">
             {SPANS.map((s) => (
-              <button key={s.n} className={span === s.n ? "on" : ""} onClick={() => setSpan(s.n)}>
+              <button key={s.key} className={spanKey === s.key ? "on" : ""} onClick={() => pickSpan(s.key)}>
                 {s.label}
               </button>
             ))}
@@ -112,26 +204,33 @@ export function RoadmapView() {
         <div className="field">
           <span>Mover</span>
           <div className="seg">
-            <button onClick={() => setFrom(addMonths(from, -1))} aria-label="Mes anterior">
+            <button onClick={() => move(-1)} aria-label={weekly ? "Semana anterior" : "Mes anterior"}>
               ←
             </button>
-            <button onClick={() => setFrom(addMonths(startOfMonth(today), -1))}>Hoy</button>
-            <button onClick={() => setFrom(addMonths(from, 1))} aria-label="Mes siguiente">
+            <button onClick={() => setFrom(defaultFrom(span.unit, today))}>Hoy</button>
+            <button onClick={() => move(1)} aria-label={weekly ? "Semana siguiente" : "Mes siguiente"}>
               →
             </button>
           </div>
         </div>
         <div className="field" style={{ flex: "1 1 300px" }}>
-          <span>Clientes</span>
+          <span>{groupBy === "cliente" ? "Clientes" : "Colaboradores"}</span>
           <div className="chips">
-            {clients
-              .filter((c) => showInactive || c.active)
-              .map((c) => (
-                <button key={c.id} className={`chip ${only.has(c.id) ? "on" : ""}`} onClick={() => toggleOnly(c.id)}>
-                  <i style={{ background: c.color }} />
-                  {c.name}
-                </button>
-              ))}
+            {groupBy === "cliente"
+              ? clients
+                  .filter((c) => showInactive || c.active)
+                  .map((c) => (
+                    <button key={c.id} className={`chip ${only.has(c.id) ? "on" : ""}`} onClick={() => toggleOnly(c.id)}>
+                      <i style={{ background: c.color }} />
+                      {c.name}
+                    </button>
+                  ))
+              : people.map((p) => (
+                  <button key={p.id} className={`chip ${only.has(p.id) ? "on" : ""}`} onClick={() => toggleOnly(p.id)}>
+                    <Avatar p={p} sm />
+                    {p.full_name}
+                  </button>
+                ))}
             {only.size > 0 && (
               <button className="btn ghost sm" onClick={() => setOnly(new Set())}>
                 Ver todos
@@ -145,15 +244,21 @@ export function RoadmapView() {
       </div>
 
       <div className="gantt">
-        <div className="gantt-in">
+        <div className="gantt-in" style={weekly ? { minWidth: 160 * span.n + 220 } : undefined}>
           <div className="g-row g-head">
             <div className="g-label">
-              <span className="lbl">Cliente</span>
+              <span className="lbl">{groupBy === "cliente" ? "Cliente" : "Colaborador"}</span>
             </div>
             <div className="g-months">
-              {months.map((m) => (
-                <div key={m} className={`g-month ${m === startOfMonth(today) ? "cur" : ""}`} style={{ left: `${pct(m)}%`, width: `${pct(addMonths(m, 1)) - pct(m)}%` }}>
-                  {fmtMonth(m, span <= 6)}
+              {cols.map((m) => (
+                <div key={m} className={`g-month ${m === curCol ? "cur" : ""}`} style={{ left: `${pct(m)}%`, width: `${pct(colEnd(m)) - pct(m)}%` }}>
+                  {weekly ? (
+                    <>
+                      {m === curCol ? "Esta semana" : "Semana"} <span className="mono">{fmtShort(m)}</span>
+                    </>
+                  ) : (
+                    fmtMonth(m, span.n <= 6)
+                  )}
                 </div>
               ))}
               {today >= from && today < to && (
@@ -163,69 +268,93 @@ export function RoadmapView() {
               )}
             </div>
           </div>
-          {visibleClients.map((c) => {
-            const ps = projects.filter((p) => p.client_id === c.id && p.end_date >= from && p.start_date < to);
-            const st = stats.get(c.id);
-            return (
-              <div key={c.id} className="g-row">
-                <div className="g-label">
-                  <b>
-                    <i style={{ background: c.color }} />
-                    {staff ? (
-                      <button className="btn ghost sm" style={{ padding: 0, fontWeight: 800, fontSize: 14 }} onClick={() => setEditClient(c)} title="Editar cliente">
-                        {c.name}
-                      </button>
-                    ) : (
-                      c.name
-                    )}
-                  </b>
-                  <small>
-                    {st?.open ?? 0} tareas abiertas
-                    {st?.late ? <span className="late"> · {st.late} vencidas</span> : null}
-                  </small>
-                </div>
-                <div className="g-lane">
-                  {months.map((m) => (
-                    <div key={m} className="gl" style={{ left: `${pct(m)}%` }} />
-                  ))}
-                  {today >= from && today < to && <div className="g-today" style={{ left: `${pct(today)}%` }} />}
-                  {ps.length ? (
-                    ps.map((p) => {
-                      const l = pct(p.start_date);
-                      const r = pct(p.end_date);
-                      const owner = p.owner_id ? byId.profile.get(p.owner_id) : undefined;
-                      return (
-                        <button
-                          key={p.id}
-                          className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""} ${editProject?.id === p.id ? "sel" : ""}`}
-                          style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: c.color, color: textOn(c.color) }}
-                          onClick={() => setEditProject(p)}
-                          data-hover-project={p.id}
-                          aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${p.progress}%${owner ? `, ${owner.full_name}` : ""}`}
-                        >
-                          <span className="fill" style={{ width: `${p.progress}%` }} />
-                          <span className="lbl-in">
-                            {p.name} · {p.progress}%
-                          </span>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="g-empty">Sin proyectos en este período</div>
-                  )}
-                </div>
+          {rows.map((row) => (
+            <div key={row.key} className="g-row">
+              <div className="g-label">
+                {row.label}
+                <small>{row.sub}</small>
               </div>
-            );
-          })}
-          {!visibleClients.length && <div className="empty">Todavía no hay clientes. {staff ? "Sumá el primero con “+ Cliente”." : ""}</div>}
+              <div className="g-lane">
+                {cols.map((m) => (
+                  <div key={m} className={`gl ${weekly && m === curCol ? "cur" : ""}`} style={{ left: `${pct(m)}%`, width: weekly ? `${pct(colEnd(m)) - pct(m)}%` : undefined }} />
+                ))}
+                {today >= from && today < to && <div className="g-today" style={{ left: `${pct(today)}%` }} />}
+                {row.projects.map((p) => {
+                  const c = byId.client.get(p.client_id);
+                  const color = c?.color ?? "#304cd3";
+                  const l = pct(p.start_date);
+                  const r = pct(p.end_date);
+                  const owner = p.owner_id ? byId.profile.get(p.owner_id) : undefined;
+                  return (
+                    <button
+                      key={p.id}
+                      className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""} ${editProject?.id === p.id ? "sel" : ""}`}
+                      style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: color, color: textOn(color) }}
+                      onClick={() => setEditProject(p)}
+                      data-hover-project={p.id}
+                      aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${p.progress}%${owner ? `, ${owner.full_name}` : ""}`}
+                    >
+                      <span className="fill" style={{ width: `${p.progress}%` }} />
+                      <span className="lbl-in">
+                        {groupBy === "colaborador" && c ? `${c.name} · ` : ""}
+                        {p.name} · {p.progress}%
+                      </span>
+                    </button>
+                  );
+                })}
+                {weekly && (
+                  // Vista por semana: las tareas de cada semana (por vencimiento) debajo de los proyectos
+                  <div className="g-wk" style={{ gridTemplateColumns: `repeat(${span.n}, minmax(0, 1fr))` }}>
+                    {cols.map((w) => {
+                      const end = colEnd(w);
+                      const list = row.tasks
+                        .filter((t) => {
+                          const d = t.due_date ?? t.start_date;
+                          return d && d >= w && d < end;
+                        })
+                        .sort((a, b) => Number(a.status === "hecha") - Number(b.status === "hecha"));
+                      return (
+                        <div key={w} className="g-wkcell">
+                          {list.slice(0, MAX_CHIPS).map((t) => {
+                            const c = t.client_id ? byId.client.get(t.client_id) : undefined;
+                            const late = t.status !== "hecha" && t.due_date && t.due_date < today;
+                            return (
+                              <button
+                                key={t.id}
+                                className={`cal-chip ${t.status === "hecha" ? "done" : ""} ${late ? "late" : ""}`}
+                                style={{ borderLeftColor: c?.color ?? "var(--border)" }}
+                                onClick={() => setOpenTask(t)}
+                                data-hover-task={t.id}
+                              >
+                                <span className="t">{t.title}</span>
+                                {groupBy === "cliente" && <Avatar p={byId.profile.get(t.assignee_id)} sm />}
+                              </button>
+                            );
+                          })}
+                          {list.length > MAX_CHIPS && <span className="g-more">+{list.length - MAX_CHIPS} más</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {!row.projects.length && !weekly && <div className="g-empty">Sin proyectos en este período</div>}
+              </div>
+            </div>
+          ))}
+          {!rows.length && (
+            <div className="empty">
+              {groupBy === "cliente" ? `Todavía no hay clientes. ${staff ? "Sumá el primero con “+ Cliente”." : ""}` : "No hay colaboradores con estos filtros."}
+            </div>
+          )}
         </div>
       </div>
       <div className="legend">
         <span>La barra muestra el avance (zona más clara).</span>
         <span>Rayada = en pausa · Transparente = completado</span>
+        {weekly && <span>Debajo de cada fila: las tareas de esa semana (por vencimiento).</span>}
       </div>
 
-      <div className="cards">
+      <div className="cards" hidden={groupBy !== "cliente"}>
         {visibleClients.map((c) => {
           const st = stats.get(c.id);
           const active = projects.filter((p) => p.client_id === c.id && p.status !== "completado");
