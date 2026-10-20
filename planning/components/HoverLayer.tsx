@@ -128,10 +128,10 @@ export function HoverLayer() {
       <b className="h">{p.name}</b>
       <div className="row">
         <span className="pill s-en_revision">{PROJECT_STATUS_LABEL[p.status]}</span>
-        <span className="muted">{p.progress}% de avance</span>
+        <span className="muted">{linked.length ? `${Math.round((done / linked.length) * 100)}% de avance` : "Sin tareas todavía"}</span>
       </div>
       <div className="bar-p">
-        <i style={{ width: `${p.progress}%` }} />
+        <i style={{ width: `${linked.length ? Math.round((done / linked.length) * 100) : 0}%` }} />
       </div>
       <div className="kv">
         <span>Responsable</span>

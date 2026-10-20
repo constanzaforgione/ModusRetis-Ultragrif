@@ -6,6 +6,7 @@ import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permissions";
 import { addDays, addMonths, diffDays, fmtMonth, fmtShort, startOfMonth, startOfWeek } from "@/lib/dates";
+import { projectProgress, progressLabel } from "@/lib/progress";
 import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project, type Task } from "@/lib/types";
 
 /** Texto blanco u oscuro según qué se lee mejor sobre el color del cliente */
@@ -172,7 +173,7 @@ export function RoadmapView() {
             <button className="btn" onClick={() => setEditClient({ color: CLIENT_COLORS[clients.length % CLIENT_COLORS.length], active: true })}>
               + Cliente
             </button>
-            <button className="btn primary" onClick={() => setEditProject({ start_date: today, end_date: addMonths(today, 1), status: "planificado", progress: 0 })} disabled={!clients.length}>
+            <button className="btn primary" onClick={() => setEditProject({ start_date: today, end_date: addMonths(today, 1), status: "planificado" })} disabled={!clients.length}>
               + Proyecto
             </button>
           </div>
@@ -285,6 +286,7 @@ export function RoadmapView() {
                   const l = pct(p.start_date);
                   const r = pct(p.end_date);
                   const owner = p.owner_id ? byId.profile.get(p.owner_id) : undefined;
+                  const pr = projectProgress(p.id, tasks);
                   return (
                     <button
                       key={p.id}
@@ -292,12 +294,12 @@ export function RoadmapView() {
                       style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: color, color: textOn(color) }}
                       onClick={() => setEditProject(p)}
                       data-hover-project={p.id}
-                      aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${p.progress}%${owner ? `, ${owner.full_name}` : ""}`}
+                      aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${pr.done} de ${pr.total} tareas hechas${owner ? `, ${owner.full_name}` : ""}`}
                     >
-                      <span className="fill" style={{ width: `${p.progress}%` }} />
+                      <span className="fill" style={{ width: `${pr.pct}%` }} />
                       <span className="lbl-in">
                         {groupBy === "colaborador" && c ? `${c.name} · ` : ""}
-                        {p.name} · {p.progress}%
+                        {p.name} · {progressLabel(pr)}
                       </span>
                     </button>
                   );
@@ -349,7 +351,7 @@ export function RoadmapView() {
         </div>
       </div>
       <div className="legend">
-        <span>La barra muestra el avance (zona más clara).</span>
+        <span>La zona más clara de cada barra es el avance: tareas hechas sobre el total del proyecto.</span>
         <span>Rayada = en pausa · Transparente = completado</span>
         {weekly && <span>Debajo de cada fila: las tareas de esa semana (por vencimiento).</span>}
       </div>
@@ -389,7 +391,7 @@ export function RoadmapView() {
                   {active.map((p) => (
                     <button key={p.id} onClick={() => setEditProject(p)} data-hover-project={p.id} className={editProject?.id === p.id ? "sel" : ""}>
                       <span className="t">{p.name}</span>
-                      <span className="mono muted">{p.progress}%</span>
+                      <span className="mono muted">{progressLabel(projectProgress(p.id, tasks))}</span>
                     </button>
                   ))}
                 </div>
@@ -513,7 +515,7 @@ function ProjectDialog({
       status: f.status,
       start_date: f.start_date,
       end_date: f.end_date,
-      progress: Math.max(0, Math.min(100, Number(f.progress) || 0)),
+      progress: projectProgress(f.id, tasks).pct,
       owner_id: f.owner_id || null,
       ...(isNew ? { created_by: me.id } : {}),
     });
@@ -593,8 +595,18 @@ function ProjectDialog({
           </select>
         </label>
         <label className="field">
-          <span>Avance: {f.progress ?? 0}%</span>
-          <input type="range" min={0} max={100} step={5} value={f.progress ?? 0} onChange={(e) => setF({ ...f, progress: Number(e.target.value) })} disabled={!staff} />
+          <span>Avance</span>
+          {(() => {
+            const pr = projectProgress(f.id, tasks);
+            return (
+              <div className="auto-progress" title="Se calcula solo con las tareas del proyecto">
+                <div className="bar-p">
+                  <i style={{ width: `${pr.pct}%` }} />
+                </div>
+                <span>{pr.total ? `${pr.pct}% · ${pr.done} de ${pr.total} tareas hechas` : "Todavía no tiene tareas"}</span>
+              </div>
+            );
+          })()}
         </label>
       </div>
       {!isNew && (

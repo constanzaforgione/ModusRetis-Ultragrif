@@ -43,6 +43,20 @@
     color-scheme: dark;
   }
 }
+/* Modo oscuro elegido a mano (botón ☾ / ☀ de la barra superior) */
+:root[data-theme="dark"] {
+    --primary: #6f86ff; --cyan: #2fd6dd; --ink: #e8ecf4; --muted: #93a0b8;
+    --bg: #0d1220; --surface: #141b2d; --surface2: #1b2438; --border: #2a3550; --grid: #202a40;
+    --now: rgba(47, 214, 221, 0.08); --nowline: #2fd6dd; --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    --st-pendiente-bg: #232b3c; --st-pendiente-fg: #aab3c2; --st-pendiente-dot: #7d8798;
+    --st-en_curso-bg: #3a2c12;  --st-en_curso-fg: #f5c77a;  --st-en_curso-dot: #f0a63a;
+    --st-bloqueada-bg: #3d1a1d; --st-bloqueada-fg: #f3a5a5; --st-bloqueada-dot: #ec6464;
+    --st-en_revision-bg: #1e2a55; --st-en_revision-fg: #b7c4ff; --st-en_revision-dot: #6f86ff;
+    --st-hecha-bg: #16351f;     --st-hecha-fg: #93d9a8;     --st-hecha-dot: #4cc276;
+    --pr-media: #6f86ff; --danger: #ec6464;
+    color-scheme: dark;
+}
+
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -237,8 +251,8 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 .hovercard .desc { color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
 .hovercard .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
 .hovercard .kv > span:nth-child(odd) { color: var(--muted); }
-.hovercard .bar-p { height: 6px; border-radius: 99px; background: var(--surface2); overflow: hidden; }
-.hovercard .bar-p i { display: block; height: 100%; background: var(--primary); }
+.bar-p { height: 6px; border-radius: 99px; background: var(--surface2); overflow: hidden; }
+.bar-p i { display: block; height: 100%; background: var(--primary); }
 .hovercard .hint { font-size: 11px; color: var(--muted); }
 
 /* ---------- voz ---------- */
@@ -473,3 +487,6 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 .chips.one-line { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; height: var(--ctl-h); align-items: center; }
 .chips.one-line::-webkit-scrollbar { display: none; }
 @media (max-width: 760px) { :root { --ctl-h: 40px; } }
+
+.auto-progress { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; font-size: 13px; }
+.theme-btn { font-size: 16px; }

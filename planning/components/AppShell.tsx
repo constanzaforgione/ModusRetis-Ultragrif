@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { Avatar } from "./ui";
 import { Iso } from "./Logo";
@@ -37,6 +37,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [loading, urgent, me.id, today]);
 
+  // Tema: claro u oscuro. Sin elección, sigue al sistema; el botón lo fija y se recuerda.
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const set = document.documentElement.dataset.theme;
+    setDark(set ? set === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }, []);
+  const toggleTheme = () => {
+    const next = dark ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem("mr-theme", next);
+    } catch {}
+    setDark(!dark);
+  };
+
   const tabs = [
     { href: "/roadmap", label: "Roadmap" },
     { href: "/tareas", label: "Tareas" },
@@ -64,6 +79,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="spacer" />
           <div className="me">
+            <button
+              className="iconbtn theme-btn"
+              onClick={toggleTheme}
+              aria-label={dark ? "Pasar a modo claro" : "Pasar a modo oscuro"}
+              title={dark ? "Modo claro" : "Modo oscuro"}
+            >
+              {dark ? "☀" : "☾"}
+            </button>
             <Link href="/atencion" className="iconbtn" aria-label={`Avisos: ${unread} sin leer`} title="Avisos">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
