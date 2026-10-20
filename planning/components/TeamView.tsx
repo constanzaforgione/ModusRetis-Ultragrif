@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useData } from "./DataProvider";
 import { Avatar } from "./ui";
 import { ROLE_LABEL, type Profile, type Role } from "@/lib/types";
+import { hasPerson } from "@/lib/people";
 
 export function TeamView() {
   const { me, profiles, tasks, today, save, toast, reload } = useData();
@@ -122,7 +123,7 @@ export function TeamView() {
             </thead>
             <tbody>
               {sorted.map((p) => {
-                const open = tasks.filter((t) => t.assignee_id === p.id && t.status !== "hecha");
+                const open = tasks.filter((t) => hasPerson(t, p.id) && t.status !== "hecha");
                 const late = open.filter((t) => t.due_date && t.due_date < today).length;
                 return (
                   <tr key={p.id} style={{ opacity: p.active ? 1 : 0.55 }}>

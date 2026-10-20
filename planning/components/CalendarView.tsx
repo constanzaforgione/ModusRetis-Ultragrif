@@ -4,10 +4,11 @@
 // En celular, la semana se muestra como agenda día por día.
 import { useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
-import { Avatar } from "./ui";
+import { Avatars } from "./ui";
 import { addDays, addMonths, dayName, fmtMonth, fmtShort, hhmm, startOfMonth, startOfWeek, weekday } from "@/lib/dates";
 import type { Task } from "@/lib/types";
 import type { TaskDraft } from "./TaskDrawer";
+import { taskPeople } from "@/lib/people";
 
 const FIRST_HOUR = 7;
 const LAST_HOUR = 21;
@@ -74,7 +75,7 @@ export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task
         {t.start_time && <span className="mono">{hhmm(t.start_time)}</span>}
         {t.recurring_id && <span aria-label="Se repite">🔁</span>}
         <span className="t">{t.title}</span>
-        {!compact && <Avatar p={byId.profile.get(t.assignee_id)} sm />}
+        {!compact && <Avatars people={taskPeople(t).map((id) => byId.profile.get(id))} sm max={2} />}
       </button>
     );
   };

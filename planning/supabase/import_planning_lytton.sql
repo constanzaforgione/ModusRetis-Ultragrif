@@ -3,6 +3,7 @@
 --   · no duplica proyectos ni tareas (los busca por cliente + nombre),
 --   · si alguien todavía no había entrado a la app, su tarea queda a nombre del admin con la nota
 --     "Responsable en el planning: X"; al volver a correrlo cuando esa persona ya entró, se la pasa.
+-- Requiere las migraciones 0001 a 0004.
 
 -- Personas del planning y cómo reconocerlas por nombre o mail
 drop table if exists _people;
@@ -121,12 +122,17 @@ set assignee_id = w.id, description = ''
 from _who w
 where t.description = 'Responsable en el planning: ' || w.hint;
 
+-- Proyectos sin su responsable real todavía (vacíos o a nombre del admin por sus tareas): pasa a ser el principal
 update public.projects pr
-set owner_id = w.id
+set owner_id = w.id,
+    owner_ids = public.uniq_ids(array[w.id] || array_remove(pr.owner_ids, (select id from _admin)) ||
+      case when exists (select 1 from public.tasks t where t.project_id = pr.id and (select id from _admin) = any (t.assignee_ids))
+           then array[(select id from _admin)] else '{}'::uuid[] end)
 from _projects x
 join public.clients c on c.name = x.client
 join _who w on w.hint = x.owner
-where pr.client_id = c.id and pr.name = x.name and pr.owner_id is null;
+where pr.client_id = c.id and pr.name = x.name
+  and (pr.owner_id is null or (pr.owner_id = (select id from _admin) and w.id <> pr.owner_id));
 
 -- Resumen
 select (select count(*) from public.projects) as proyectos,

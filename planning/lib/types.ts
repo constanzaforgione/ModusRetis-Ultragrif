@@ -32,7 +32,10 @@ export interface Project {
   start_date: string;
   end_date: string;
   progress: number;
+  /** Responsable principal (= owner_ids[0]) */
   owner_id: string | null;
+  /** Todas las personas responsables; quien tiene tareas en el proyecto se suma solo */
+  owner_ids: string[];
   created_at: string;
   updated_at: string;
 }
@@ -43,7 +46,10 @@ export interface Task {
   description: string;
   client_id: string | null;
   project_id: string | null;
+  /** Responsable principal (= assignee_ids[0]) */
   assignee_id: string;
+  /** Todas las personas responsables de la tarea */
+  assignee_ids: string[];
   created_by: string;
   status: TaskStatus;
   priority: Priority;

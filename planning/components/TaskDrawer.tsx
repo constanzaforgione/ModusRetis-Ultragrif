@@ -1,9 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useData } from "./DataProvider";
-import { SidePanel } from "./ui";
+import { PeoplePicker, SidePanel } from "./ui";
 import { useSpeech } from "./useSpeech";
-import { assignableProfiles, canDelete, canEditTask } from "@/lib/permissions";
+import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permissions";
+import { taskPeople } from "@/lib/people";
 import { PRIORITIES, RECURRENCE, STATUS, type Recurrence, type RecurringTask, type Task } from "@/lib/types";
 import { diffDays, fmtShort, hhmm, nextOccurrence, todayISO } from "@/lib/dates";
 
@@ -36,16 +37,13 @@ export function TaskDrawer({
     end_time: null,
     ...task,
   });
+  const [people, setPeople] = useState<string[]>(() => (task.assignee_id ? taskPeople(task as Task) : [me.id]));
   const series = task.recurring_id ? recurring.find((r) => r.id === task.recurring_id) : undefined;
   const [repeat, setRepeat] = useState<Recurrence | "">("");
   const [busy, setBusy] = useState(false);
   const editable = isNew || canEditTask(me, task as Task, profiles);
-  const assignable = useMemo(() => {
-    const list = assignableProfiles(me, profiles);
-    // si la tarea es de alguien fuera del alcance, igual mostramos su nombre
-    const current = f.assignee_id ? byId.profile.get(f.assignee_id) : undefined;
-    return current && !list.includes(current) ? [current, ...list] : list;
-  }, [me, profiles, f.assignee_id, byId]);
+  const assignable = useMemo(() => assignableProfiles(me, profiles), [me, profiles]);
+  // Solo admins y líderes suman o sacan personas; un miembro ve quiénes están
   const clientProjects = projects.filter((p) => p.client_id === f.client_id);
 
   const speech = useSpeech((text) => setF((x) => ({ ...x, description: x.description ? `${x.description} ${text}` : text })));
@@ -60,7 +58,8 @@ export function TaskDrawer({
       description: f.description ?? "",
       status: f.status,
       priority: f.priority,
-      assignee_id: f.assignee_id,
+      assignee_id: people[0],
+      assignee_ids: people,
       client_id: f.client_id || null,
       project_id: f.project_id || null,
       start_date: f.start_date || null,
@@ -177,6 +176,18 @@ export function TaskDrawer({
       {speech.interim && <div className="meta-line">… {speech.interim}</div>}
       {speech.error && <div className="notice err">{speech.error}</div>}
 
+      <div className="field">
+        <span>{people.length > 1 ? "Responsables" : "Responsable"}</span>
+        <PeoplePicker
+          value={people}
+          onChange={setPeople}
+          options={assignable}
+          all={byId.profile}
+          disabled={!editable || !isStaff(me)}
+          title={!isStaff(me) ? "Solo admins y líderes suman a otras personas a una tarea" : undefined}
+        />
+      </div>
+
       <div className="grid2">
         <label className="field">
           <span>Estado</span>
@@ -194,17 +205,6 @@ export function TaskDrawer({
             {PRIORITIES.map((p) => (
               <option key={p.key} value={p.key}>
                 {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Responsable</span>
-          <select value={f.assignee_id} onChange={(e) => set("assignee_id", e.target.value)} disabled={!editable || assignable.length < 2} title={assignable.length < 2 ? "Solo admins y líderes asignan tareas a otras personas" : undefined}>
-            {assignable.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.full_name || p.email}
-                {p.id === me.id ? " (yo)" : ""}
               </option>
             ))}
           </select>

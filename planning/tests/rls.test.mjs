@@ -8,6 +8,7 @@ import { PGlite } from "@electric-sql/pglite";
 const schema = readFileSync(new URL("../supabase/migrations/0001_init.sql", import.meta.url), "utf8");
 const schema2 = readFileSync(new URL("../supabase/migrations/0002_horarios_repeticion_asignacion.sql", import.meta.url), "utf8");
 const schema3 = readFileSync(new URL("../supabase/migrations/0003_avisos.sql", import.meta.url), "utf8");
+const schema4 = readFileSync(new URL("../supabase/migrations/0004_varios_responsables.sql", import.meta.url), "utf8");
 const seed = readFileSync(new URL("../supabase/seed.sql", import.meta.url), "utf8");
 
 const ADMIN = "00000000-0000-0000-0000-00000000000a";
@@ -27,6 +28,7 @@ async function setup() {
   await db.exec(schema);
   await db.exec(schema2);
   await db.exec(schema3);
+  await db.exec(schema4);
   await db.exec(seed);
   await db.exec(`
     grant usage on schema public, auth to authenticated;
@@ -71,7 +73,7 @@ test("un miembro crea y edita sus tareas, pero no las de otros", async () => {
   assert.equal(upd.rows.length, 1);
   assert.ok(upd.rows[0].completed_at, "completed_at se completa al cerrar");
 
-  await assert.rejects(as(db, MEMBER, ...newTask(OTHER)), /row-level security/);
+  await assert.rejects(as(db, MEMBER, ...newTask(OTHER)), /row-level security|Solo admins y líderes/);
 
   const others = await as(db, OTHER, ...newTask(OTHER));
   const touched = await as(db, MEMBER, `update public.tasks set title = 'X' where id = $1 returning id`, [others.rows[0].id]);
@@ -80,7 +82,7 @@ test("un miembro crea y edita sus tareas, pero no las de otros", async () => {
   // tampoco puede "regalarle" su tarea a otra persona
   await assert.rejects(
     as(db, MEMBER, `update public.tasks set assignee_id = $2 where id = $1`, [id, OTHER]),
-    /row-level security/,
+    /row-level security|Solo admins y líderes/,
   );
   // pero sí puede ver todas
   const all = await as(db, MEMBER, `select count(*)::int as n from public.tasks`);

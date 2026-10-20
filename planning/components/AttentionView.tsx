@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useData } from "./DataProvider";
-import { Avatar, ClientTag } from "./ui";
+import { Avatar, ClientTag, shortNames } from "./ui";
 import { TaskDrawer } from "./TaskDrawer";
 import { NotificationRow } from "./NotificationsMenu";
 import { openFromNotification } from "@/lib/notifications";
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { ALERT_META, alertsFor, type Alert, type AlertKind } from "@/lib/alerts";
 import { isStaff, teamIds } from "@/lib/permissions";
+import { hasPerson, taskPeople } from "@/lib/people";
 import { STATUS_LABEL, type Task } from "@/lib/types";
 
 const KINDS: AlertKind[] = ["vencida", "por_vencer", "bloqueada", "sin_movimiento"];
@@ -20,18 +21,20 @@ export function AttentionView() {
   const [perm, setPerm] = useState(() => (typeof Notification === "undefined" ? "unsupported" : Notification.permission));
   const staff = isStaff(me);
 
-  const mine = useMemo(() => alertsFor(tasks.filter((t) => t.assignee_id === me.id), today), [tasks, me.id, today]);
+  const mine = useMemo(() => alertsFor(tasks.filter((t) => hasPerson(t, me.id)), today), [tasks, me.id, today]);
   const team = useMemo(() => {
     if (!staff) return [];
     const ids = teamIds(me, profiles);
-    return alertsFor(tasks.filter((t) => t.assignee_id !== me.id && ids.has(t.assignee_id)), today);
+    return alertsFor(tasks.filter((t) => !hasPerson(t, me.id) && taskPeople(t).some((id) => ids.has(id))), today);
   }, [staff, me, profiles, tasks, today]);
 
   const byPerson = useMemo(() => {
     const m = new Map<string, Alert[]>();
-    team.forEach((a) => m.set(a.task.assignee_id, [...(m.get(a.task.assignee_id) ?? []), a]));
+    const ids = teamIds(me, profiles);
+    // una tarea compartida aparece en cada persona del equipo que la tiene
+    team.forEach((a) => taskPeople(a.task).filter((id) => ids.has(id)).forEach((id) => m.set(id, [...(m.get(id) ?? []), a])));
     return [...m.entries()].sort((a, b) => b[1].length - a[1].length);
-  }, [team]);
+  }, [team, me, profiles]);
 
   async function markAllRead() {
     await supabaseBrowser().from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null).eq("user_id", me.id);
@@ -50,7 +53,7 @@ export function AttentionView() {
       <div>{a.task.title}</div>
       <div className="meta">
         {a.text} · <ClientTag c={a.task.client_id ? byId.client.get(a.task.client_id) : undefined} /> · {STATUS_LABEL[a.task.status]}
-        {showPerson ? ` · ${byId.profile.get(a.task.assignee_id)?.full_name ?? ""}` : ""}
+        {showPerson ? ` · ${shortNames(taskPeople(a.task).map((id) => byId.profile.get(id)))}` : ""}
       </div>
     </div>
   );

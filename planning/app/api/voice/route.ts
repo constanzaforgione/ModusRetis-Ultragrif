@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
+import { taskPeople } from "@/lib/people";
 
 export const maxDuration = 60;
 
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
   const [{ data: profiles }, { data: clients }, { data: tasks }] = await Promise.all([
     supabase.from("profiles").select("id, full_name, lead_id, role").eq("active", true),
     supabase.from("clients").select("id, name").eq("active", true),
-    supabase.from("tasks").select("id, title, assignee_id, status, due_date").neq("status", "hecha").limit(300),
+    supabase.from("tasks").select("id, title, assignee_id, assignee_ids, status, due_date").neq("status", "hecha").limit(300),
   ]);
   const me = profiles?.find((p) => p.id === user.id);
   // Solo tareas que quien dicta puede editar (mismo criterio que la base)
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       .filter((p) => p.id === user.id || me?.role === "admin" || (me?.role === "lider" && p.lead_id === user.id))
       .map((p) => p.id),
   );
-  const editable = (tasks ?? []).filter((t) => manageable.has(t.assignee_id));
+  const editable = (tasks ?? []).filter((t) => taskPeople(t).some((id) => manageable.has(id)));
 
   const today = todayISO();
   const weekday = DIAS[new Date(`${today}T12:00:00Z`).getUTCDay()];

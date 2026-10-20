@@ -28,6 +28,99 @@ export function Avatar({ p, sm }: { p?: Profile; sm?: boolean }) {
   );
 }
 
+/** Varias personas: avatares superpuestos (hasta `max`, después "+N") */
+export function Avatars({ people, sm, max = 3 }: { people: (Profile | undefined)[]; sm?: boolean; max?: number }) {
+  const list = people.filter(Boolean) as Profile[];
+  if (list.length <= 1) return <Avatar p={list[0]} sm={sm} />;
+  const shown = list.slice(0, max);
+  return (
+    <span className="avatars" title={list.map((p) => p.full_name).join(", ")}>
+      {shown.map((p) => (
+        <Avatar key={p.id} p={p} sm={sm} />
+      ))}
+      {list.length > max && <span className={`avatar more ${sm ? "sm" : ""}`}>+{list.length - max}</span>}
+    </span>
+  );
+}
+
+/** Nombres: "Yani", "Yani y Maxi", "Yani, Maxi y Coni" */
+export function namesOf(people: (Profile | undefined)[], empty = "—") {
+  const n = people.filter(Boolean).map((p) => p!.full_name);
+  if (!n.length) return empty;
+  return n.length === 1 ? n[0] : `${n.slice(0, -1).join(", ")} y ${n[n.length - 1]}`;
+}
+
+/** Corto, para listas: "Yani" o "Yani +2" */
+export function shortNames(people: (Profile | undefined)[]) {
+  const n = people.filter(Boolean).map((p) => p!.full_name);
+  return n.length ? (n.length > 1 ? `${n[0]} +${n.length - 1}` : n[0]) : "—";
+}
+
+/** Elegir varias personas: chips con ✕ y un desplegable para sumar */
+export function PeoplePicker({
+  value,
+  onChange,
+  options,
+  all,
+  disabled,
+  locked = [],
+  emptyLabel = "Sin responsable",
+  title,
+  required = true,
+}: {
+  value: string[];
+  onChange: (ids: string[]) => void;
+  /** a quiénes se puede sumar */
+  options: Profile[];
+  /** para mostrar nombres de quienes ya están aunque no sean elegibles */
+  all: Map<string, Profile>;
+  disabled?: boolean;
+  /** no se pueden sacar (p. ej. quienes participan por sus tareas) */
+  locked?: string[];
+  emptyLabel?: string;
+  title?: string;
+  /** siempre tiene que quedar al menos una persona */
+  required?: boolean;
+}) {
+  const addable = options.filter((p) => !value.includes(p.id));
+  return (
+    <div className="people" title={title}>
+      {value.length === 0 && <span className="muted">{emptyLabel}</span>}
+      {value.map((id, i) => {
+        const p = all.get(id);
+        const canRemove = !disabled && !locked.includes(id) && (!required || value.length > 1);
+        return (
+          <span key={id} className="person-chip">
+            <Avatar p={p} sm />
+            {p?.full_name ?? "—"}
+            {i === 0 && value.length > 1 && <small className="muted"> · principal</small>}
+            {canRemove && (
+              <button type="button" aria-label={`Sacar a ${p?.full_name ?? "esta persona"}`} onClick={() => onChange(value.filter((x) => x !== id))}>
+                ✕
+              </button>
+            )}
+          </span>
+        );
+      })}
+      {!disabled && addable.length > 0 && (
+        <select
+          className="person-add"
+          value=""
+          aria-label="Agregar persona"
+          onChange={(e) => e.target.value && onChange([...value, e.target.value])}
+        >
+          <option value="">+ Agregar persona</option>
+          {addable.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.full_name}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
 export function ClientTag({ c }: { c?: Client }) {
   if (!c) return <span className="client-tag muted">Interno</span>;
   return (

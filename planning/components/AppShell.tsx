@@ -9,12 +9,13 @@ import { HoverLayer } from "./HoverLayer";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { alertsFor } from "@/lib/alerts";
 import { ROLE_LABEL } from "@/lib/types";
+import { hasPerson } from "@/lib/people";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { me, tasks, notifications, today, loading, toast } = useData();
   const path = usePathname();
 
-  const myAlerts = useMemo(() => alertsFor(tasks.filter((t) => t.assignee_id === me.id), today), [tasks, me.id, today]);
+  const myAlerts = useMemo(() => alertsFor(tasks.filter((t) => hasPerson(t, me.id)), today), [tasks, me.id, today]);
   const unread = notifications.filter((n) => !n.read_at).length;
   const urgent = myAlerts.filter((a) => a.kind === "vencida" || a.kind === "por_vencer").length;
 

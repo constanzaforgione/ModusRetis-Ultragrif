@@ -18,6 +18,7 @@ async function setup() {
   await db.exec(read("migrations/0001_init.sql"));
   await db.exec(read("migrations/0002_horarios_repeticion_asignacion.sql"));
   await db.exec(read("migrations/0003_avisos.sql"));
+  await db.exec(read("migrations/0004_varios_responsables.sql"));
   await db.exec(read("seed.sql"));
   return db;
 }

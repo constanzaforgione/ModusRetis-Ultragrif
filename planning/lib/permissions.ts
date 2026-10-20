@@ -1,6 +1,7 @@
 // Espejo en la interfaz de las reglas RLS de la base (supabase/migrations/0001_init.sql).
 // La base es la que manda: esto solo sirve para no mostrar botones que van a fallar.
 import type { Profile, Task } from "./types";
+import { taskPeople } from "./people";
 
 export function canManageUser(me: Profile, targetId: string, profiles: Profile[]): boolean {
   if (!me.active) return false;
@@ -16,9 +17,13 @@ export function assignableProfiles(me: Profile, profiles: Profile[]): Profile[] 
   return profiles.filter((p) => p.active && (isStaff(me) || canManageUser(me, p.id, profiles)));
 }
 
-/** ¿Puede editar esta tarea? Su responsable, su líder, un admin, o el admin/líder que la creó */
-export function canEditTask(me: Profile, task: Pick<Task, "assignee_id" | "created_by">, profiles: Profile[]): boolean {
-  return canManageUser(me, task.assignee_id, profiles) || (isStaff(me) && task.created_by === me.id);
+/** ¿Puede editar esta tarea? Cualquiera de sus responsables, el líder de alguno, un admin, o el admin/líder que la creó */
+export function canEditTask(
+  me: Profile,
+  task: Pick<Task, "assignee_id" | "created_by"> & { assignee_ids?: string[] },
+  profiles: Profile[],
+): boolean {
+  return taskPeople(task).some((id) => canManageUser(me, id, profiles)) || (isStaff(me) && task.created_by === me.id);
 }
 export const canDelete = (me: Profile) => me.active && me.role === "admin";
 

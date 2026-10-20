@@ -3,9 +3,10 @@
 // muestra una tarjeta con lo principal, sin tener que abrirlo. Solo en dispositivos con mouse.
 import { useEffect, useRef, useState } from "react";
 import { useData } from "./DataProvider";
-import { Avatar, ClientTag } from "./ui";
+import { Avatars, ClientTag, namesOf } from "./ui";
 import { alertFor } from "@/lib/alerts";
 import { fmtShort, hhmm, relative } from "@/lib/dates";
+import { projectPeople, taskPeople } from "@/lib/people";
 import { PRIORITY_LABEL, PROJECT_STATUS_LABEL, STATUS_LABEL } from "@/lib/types";
 
 type Target = { kind: "task" | "project"; id: string; rect: DOMRect };
@@ -70,7 +71,7 @@ export function HoverLayer() {
   if (target.kind === "task") {
     const t = tasks.find((x) => x.id === target.id);
     if (!t) return null;
-    const who = byId.profile.get(t.assignee_id);
+    const who = taskPeople(t).map((id) => byId.profile.get(id));
     const project = t.project_id ? byId.project.get(t.project_id) : undefined;
     const alert = alertFor(t, today);
     return (
@@ -86,9 +87,9 @@ export function HoverLayer() {
           {alert && <span className={`pill k-${alert.kind}`}>{alert.text}</span>}
         </div>
         <div className="kv">
-          <span>Responsable</span>
+          <span>{who.length > 1 ? "Responsables" : "Responsable"}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Avatar p={who} sm /> {who?.full_name ?? "—"}
+            <Avatars people={who} sm /> {namesOf(who)}
           </span>
           <span>Inicio</span>
           <span>{fmtShort(t.start_date)}</span>
@@ -118,7 +119,7 @@ export function HoverLayer() {
 
   const p = projects.find((x) => x.id === target.id);
   if (!p) return null;
-  const owner = p.owner_id ? byId.profile.get(p.owner_id) : undefined;
+  const owners = projectPeople(p, tasks).map((id) => byId.profile.get(id));
   const linked = tasks.filter((t) => t.project_id === p.id);
   const done = linked.filter((t) => t.status === "hecha").length;
   const late = linked.filter((t) => t.status !== "hecha" && t.due_date && t.due_date < today).length;
@@ -134,11 +135,11 @@ export function HoverLayer() {
         <i style={{ width: `${linked.length ? Math.round((done / linked.length) * 100) : 0}%` }} />
       </div>
       <div className="kv">
-        <span>Responsable</span>
+        <span>{owners.length > 1 ? "Responsables" : "Responsable"}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {owner ? (
+          {owners.length ? (
             <>
-              <Avatar p={owner} sm /> {owner.full_name}
+              <Avatars people={owners} sm max={4} /> {namesOf(owners)}
             </>
           ) : (
             "Sin asignar"

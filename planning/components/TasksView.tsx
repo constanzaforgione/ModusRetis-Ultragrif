@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
-import { Avatar, ClientTag } from "./ui";
+import { Avatars, ClientTag, shortNames } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { VoiceDialog } from "./VoiceDialog";
 import { CalendarView } from "./CalendarView";
 import { canEditTask, isStaff, teamIds } from "@/lib/permissions";
+import { taskPeople } from "@/lib/people";
 import { alertFor } from "@/lib/alerts";
 import { addDays, fmtShort, hhmm, relative } from "@/lib/dates";
 import { PRIORITIES, PRIORITY_LABEL, PRIORITY_RANK, STATUS, STATUS_LABEL, type Task, type TaskStatus } from "@/lib/types";
@@ -75,9 +76,9 @@ export function TasksView() {
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
     return tasks
-      .filter((t) => (scope === "mias" ? t.assignee_id === me.id : scope === "equipo" ? team.has(t.assignee_id) : true))
+      .filter((t) => (scope === "mias" ? taskPeople(t).includes(me.id) : scope === "equipo" ? taskPeople(t).some((id) => team.has(id)) : true))
       .filter((t) => !client || (client === "interno" ? !t.client_id : t.client_id === client))
-      .filter((t) => !person || t.assignee_id === person)
+      .filter((t) => !person || taskPeople(t).includes(person))
       .filter((t) => !priority || t.priority === priority)
       .filter((t) => !s || t.title.toLowerCase().includes(s) || t.description.toLowerCase().includes(s))
       .sort(
@@ -235,7 +236,7 @@ export function TasksView() {
               <div className="tlist">
                 {g.items.map((t) => {
                   const editable = canEdit(t);
-                  const who = byId.profile.get(t.assignee_id);
+                  const who = taskPeople(t).map((id) => byId.profile.get(id));
                   const done = t.status === "hecha";
                   const late = !done && t.due_date && t.due_date < today;
                   return (
@@ -260,8 +261,8 @@ export function TasksView() {
                         </small>
                       </div>
                       <div className="person">
-                        <Avatar p={who} sm />
-                        <span>{who?.full_name ?? "—"}</span>
+                        <Avatars people={who} sm />
+                        <span>{shortNames(who)}</span>
                       </div>
                       <div className="prio-c">
                         <span className={`prio ${t.priority}`}>{PRIORITY_LABEL[t.priority]}</span>
@@ -292,7 +293,7 @@ export function TasksView() {
                       </div>
                       <div className="meta-m">
                         <span className="person">
-                          <Avatar p={who} sm /> {who?.full_name}
+                          <Avatars people={who} sm /> {shortNames(who)}
                         </span>
                         <span className={`prio ${t.priority}`}>{PRIORITY_LABEL[t.priority]}</span>
                         {t.due_date && <span className={late ? "late" : "muted"}>{relative(t.due_date, today)}</span>}
@@ -338,7 +339,7 @@ export function TasksView() {
                 </div>
                 {items.map((t) => {
                   const editable = canEdit(t);
-                  const who = byId.profile.get(t.assignee_id);
+                  const who = taskPeople(t).map((id) => byId.profile.get(id));
                   const alert = alertFor(t, today);
                   return (
                     <div
@@ -356,7 +357,7 @@ export function TasksView() {
                         <span className={`prio ${t.priority}`}>{PRIORITY_LABEL[t.priority]}</span>
                         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {t.due_date && <span className={`mono ${alert?.kind === "vencida" ? "late" : "muted"}`}>{fmtShort(t.due_date)}</span>}
-                          <Avatar p={who} sm />
+                          <Avatars people={who} sm />
                         </span>
                       </div>
                       {alert && <span className={`pill k-${alert.kind}`}>{alert.text}</span>}

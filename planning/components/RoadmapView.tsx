@@ -2,11 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useData } from "./DataProvider";
-import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
+import { Avatar, Avatars, CLIENT_COLORS, Modal, namesOf, PeoplePicker, shortNames, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permissions";
 import { addDays, addMonths, diffDays, fmtMonth, fmtShort, startOfMonth, startOfWeek } from "@/lib/dates";
 import { projectProgress, progressLabel } from "@/lib/progress";
+import { projectPeople, taskPeople } from "@/lib/people";
 import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project, type Task } from "@/lib/types";
 
 /** Texto blanco u oscuro según qué se lee mejor sobre el color del cliente */
@@ -88,10 +89,12 @@ export function RoadmapView() {
 
   const visibleClients = clients.filter((c) => (showInactive || c.active) && (!only.size || only.has(c.id)));
   const NO_OWNER = "sin-responsable";
-  const people = profiles.filter((p) => p.active || projects.some((x) => x.owner_id === p.id));
+  const ownersOf = useMemo(() => new Map(projects.map((x) => [x.id, projectPeople(x, tasks)])), [projects, tasks]);
+  const owners = (x: Project) => ownersOf.get(x.id) ?? [];
+  const people = profiles.filter((p) => p.active || projects.some((x) => owners(x).includes(p.id)));
   const visiblePeople = [
     ...people.filter((p) => !only.size || only.has(p.id)),
-    ...(projects.some((x) => !x.owner_id) && (!only.size || only.has(NO_OWNER)) ? [null] : []),
+    ...(projects.some((x) => !owners(x).length) && (!only.size || only.has(NO_OWNER)) ? [null] : []),
   ];
 
   const stats = useMemo(() => {
@@ -143,7 +146,7 @@ export function RoadmapView() {
           };
         })
       : visiblePeople.map((p) => {
-          const mine = p ? tasks.filter((t) => t.assignee_id === p.id) : [];
+          const mine = p ? tasks.filter((t) => taskPeople(t).includes(p.id)) : [];
           const open = mine.filter((t) => t.status !== "hecha");
           const late = open.filter((t) => t.due_date && t.due_date < today).length;
           return {
@@ -164,7 +167,7 @@ export function RoadmapView() {
             ) : (
               "Proyectos sin asignar"
             ),
-            projects: projects.filter((x) => (p ? x.owner_id === p.id : !x.owner_id) && inRange(x)),
+            projects: projects.filter((x) => (p ? owners(x).includes(p.id) : !owners(x).length) && inRange(x)),
             tasks: mine,
           };
         });
@@ -304,7 +307,7 @@ export function RoadmapView() {
                   const color = c?.color ?? "#304cd3";
                   const l = pct(p.start_date);
                   const r = pct(p.end_date);
-                  const owner = p.owner_id ? byId.profile.get(p.owner_id) : undefined;
+                  const ownerNames = namesOf(owners(p).map((id) => byId.profile.get(id)), "");
                   const pr = projectProgress(p.id, tasks);
                   return (
                     <button
@@ -313,7 +316,7 @@ export function RoadmapView() {
                       style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: color, color: textOn(color) }}
                       onClick={() => setEditProject(p)}
                       data-hover-project={p.id}
-                      aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${pr.done} de ${pr.total} tareas hechas${owner ? `, ${owner.full_name}` : ""}`}
+                      aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${pr.done} de ${pr.total} tareas hechas${ownerNames ? `, ${ownerNames}` : ""}`}
                     >
                       <span className="fill" style={{ width: `${pr.pct}%` }} />
                       <span className="lbl-in">
@@ -348,7 +351,7 @@ export function RoadmapView() {
                                 data-hover-task={t.id}
                               >
                                 <span className="t">{t.title}</span>
-                                {groupBy === "cliente" && <Avatar p={byId.profile.get(t.assignee_id)} sm />}
+                                {groupBy === "cliente" && <Avatars people={taskPeople(t).map((id) => byId.profile.get(id))} sm max={2} />}
                               </button>
                             );
                           })}
@@ -518,11 +521,15 @@ function ProjectDialog({
   onClose: () => void;
   onOpenTask: (t: TaskDraft) => void;
 }) {
-  const { me, clients, profiles, tasks, save, remove, toast } = useData();
+  const { me, clients, profiles, tasks, save, remove, toast, byId } = useData();
   const staff = isStaff(me);
   const [f, setF] = useState<Partial<Project>>({ client_id: clients.find((c) => c.active)?.id, ...project });
   const isNew = !project.id;
   const linked = tasks.filter((t) => t.project_id && t.project_id === project.id);
+  // Quienes tienen tareas en el proyecto son responsables sí o sí; el resto se elige a mano
+  const fromTasks = useMemo(() => [...new Set(linked.flatMap(taskPeople))], [linked]);
+  const [owners, setOwners] = useState<string[]>(() => (project.id ? projectPeople(project as Project, tasks) : []));
+  const ownerList = [...owners, ...fromTasks.filter((id) => !owners.includes(id))];
 
   async function submit() {
     if (!f.name?.trim() || !f.client_id || !f.start_date || !f.end_date) return toast("Completá cliente, nombre y fechas", true);
@@ -535,7 +542,8 @@ function ProjectDialog({
       start_date: f.start_date,
       end_date: f.end_date,
       progress: projectProgress(f.id, tasks).pct,
-      owner_id: f.owner_id || null,
+      owner_id: ownerList[0] ?? null,
+      owner_ids: ownerList,
       ...(isNew ? { created_by: me.id } : {}),
     });
     if (error) return toast(error, true);
@@ -605,15 +613,6 @@ function ProjectDialog({
           <input type="date" value={f.end_date ?? ""} min={f.start_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} disabled={!staff} />
         </label>
         <label className="field">
-          <span>Responsable</span>
-          <select value={f.owner_id ?? ""} onChange={(e) => setF({ ...f, owner_id: e.target.value || null })} disabled={!staff}>
-            <option value="">Sin asignar</option>
-            {profiles.filter((p) => p.active).map((p) => (
-              <option key={p.id} value={p.id}>{p.full_name}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
           <span>Avance</span>
           {(() => {
             const pr = projectProgress(f.id, tasks);
@@ -628,6 +627,25 @@ function ProjectDialog({
           })()}
         </label>
       </div>
+      <div className="field">
+        <span>{ownerList.length > 1 ? "Responsables" : "Responsable"}</span>
+        <PeoplePicker
+          value={ownerList}
+          onChange={setOwners}
+          options={profiles.filter((p) => p.active)}
+          all={byId.profile}
+          disabled={!staff}
+          locked={fromTasks}
+          required={false}
+          emptyLabel="Sin asignar"
+        />
+        {fromTasks.length > 0 && (
+          <div className="people-note">
+            <Avatars people={fromTasks.map((id) => byId.profile.get(id))} sm max={5} />
+            {namesOf(fromTasks.map((id) => byId.profile.get(id)))} {fromTasks.length > 1 ? "participan" : "participa"} por sus tareas: se suman solos y no se pueden sacar mientras tengan tareas acá.
+          </div>
+        )}
+      </div>
       {!isNew && (
         <div className="field">
           <span>
@@ -640,6 +658,7 @@ function ProjectDialog({
                 .map((t) => {
                   const done = t.status === "hecha";
                   const editable = canEditTask(me, t, profiles);
+                  const who = taskPeople(t);
                   return (
                     <div key={t.id} className={`mini-row ${done ? "done" : ""}`} data-hover-task={t.id}>
                       <button
@@ -668,25 +687,31 @@ function ProjectDialog({
                                 </option>
                               ))}
                             </select>
-                            <select value={t.assignee_id} onChange={(e) => quickSave(t, { assignee_id: e.target.value })} aria-label="Responsable">
-                              {(() => {
-                                const list = assignableProfiles(me, profiles);
-                                const cur = profiles.find((p) => p.id === t.assignee_id);
-                                return (cur && !list.includes(cur) ? [cur, ...list] : list).map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.full_name}
-                                    {p.id === me.id ? " (yo)" : ""}
-                                  </option>
-                                ));
-                              })()}
-                            </select>
+                            {who.length === 1 ? (
+                              <select value={t.assignee_id} onChange={(e) => quickSave(t, { assignee_id: e.target.value, assignee_ids: [e.target.value] })} aria-label="Responsable">
+                                {(() => {
+                                  const list = assignableProfiles(me, profiles);
+                                  const cur = profiles.find((p) => p.id === t.assignee_id);
+                                  return (cur && !list.includes(cur) ? [cur, ...list] : list).map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {p.full_name}
+                                      {p.id === me.id ? " (yo)" : ""}
+                                    </option>
+                                  ));
+                                })()}
+                              </select>
+                            ) : (
+                              <button className="link mini-people" onClick={() => onOpenTask(t)} title={`${namesOf(who.map((id) => byId.profile.get(id)))} · abrir para cambiar`}>
+                                <Avatars people={who.map((id) => byId.profile.get(id))} sm />
+                              </button>
+                            )}
                           </>
                         ) : (
                           <>
                             <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
                             <span className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                              <Avatar p={profiles.find((p) => p.id === t.assignee_id)} sm />
-                              {profiles.find((p) => p.id === t.assignee_id)?.full_name}
+                              <Avatars people={who.map((id) => byId.profile.get(id))} sm />
+                              {shortNames(who.map((id) => byId.profile.get(id)))}
                             </span>
                           </>
                         )}

@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { ALERT_META, alertsFor, type Alert } from "@/lib/alerts";
 import { todayISO } from "@/lib/dates";
 import type { Profile, Task } from "@/lib/types";
+import { hasPerson, taskPeople } from "@/lib/people";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -31,16 +32,16 @@ export async function GET(req: Request) {
   const digests: { p: Profile; mine: Alert[]; team: Alert[] }[] = [];
 
   for (const p of people) {
-    const mine = alertsFor(open.filter((t) => t.assignee_id === p.id), today);
+    const mine = alertsFor(open.filter((t) => hasPerson(t, p.id)), today);
     // "Sin movimiento" va solo en el mail, para no llenar la campanita todos los días
     mine.filter((a) => a.kind !== "sin_movimiento").forEach((a) => rows.push({ user_id: p.id, task_id: a.task.id, kind: a.kind, message: `${a.text}: ${a.task.title}`, day: today }));
 
     let team: Alert[] = [];
     if (p.role === "lider" || p.role === "admin") {
       const teamIds = new Set(people.filter((x) => (p.role === "admin" || x.lead_id === p.id) && x.id !== p.id).map((x) => x.id));
-      team = alertsFor(open.filter((t) => teamIds.has(t.assignee_id)), today).filter((a) => a.kind === "vencida" || a.kind === "bloqueada");
+      team = alertsFor(open.filter((t) => !hasPerson(t, p.id) && taskPeople(t).some((id) => teamIds.has(id))), today).filter((a) => a.kind === "vencida" || a.kind === "bloqueada");
       team.forEach((a) => {
-        const who = people.find((x) => x.id === a.task.assignee_id)?.full_name ?? "Alguien";
+        const who = taskPeople(a.task).filter((id) => teamIds.has(id)).map((id) => people.find((x) => x.id === id)?.full_name).filter(Boolean).join(", ") || "Alguien";
         rows.push({ user_id: p.id, task_id: a.task.id, kind: "equipo_" + a.kind, message: `${who} · ${a.text.toLowerCase()}: ${a.task.title}`, day: today });
       });
     }
@@ -67,7 +68,7 @@ async function sendDigest(p: Profile, mine: Alert[], team: Alert[], people: Prof
     <p style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5a6a85;font-weight:700">Modus Retis · Planning</p>
     <h2 style="margin:0 0 12px">Hola ${esc(p.full_name.split(" ")[0] ?? "")}, esto necesita tu atención</h2>
     ${mine.length ? `<h3 style="color:#304cd3">Tus tareas</h3><ul style="padding-left:18px">${mine.map((a) => li(a)).join("")}</ul>` : ""}
-    ${team.length ? `<h3 style="color:#304cd3">Tu equipo</h3><ul style="padding-left:18px">${team.map((a) => li(a, people.find((x) => x.id === a.task.assignee_id)?.full_name)).join("")}</ul>` : ""}
+    ${team.length ? `<h3 style="color:#304cd3">Tu equipo</h3><ul style="padding-left:18px">${team.map((a) => li(a, taskPeople(a.task).map((id) => people.find((x) => x.id === id)?.full_name).filter(Boolean).join(", "))).join("")}</ul>` : ""}
     ${url ? `<p><a href="${url}/atencion" style="background:#304cd3;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:700">Abrir el planning</a></p>` : ""}
     <p style="color:#5a6a85;font-size:12px">Podés apagar estos mails en Equipo → “Recibir alertas por mail”.</p></div>`;
   const res = await fetch("https://api.resend.com/emails", {
