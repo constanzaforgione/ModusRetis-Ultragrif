@@ -7,6 +7,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const schema = readFileSync(new URL("../supabase/migrations/0001_init.sql", import.meta.url), "utf8");
 const schema2 = readFileSync(new URL("../supabase/migrations/0002_horarios_repeticion_asignacion.sql", import.meta.url), "utf8");
+const schema3 = readFileSync(new URL("../supabase/migrations/0003_avisos.sql", import.meta.url), "utf8");
 const seed = readFileSync(new URL("../supabase/seed.sql", import.meta.url), "utf8");
 
 const ADMIN = "00000000-0000-0000-0000-00000000000a";
@@ -25,6 +26,7 @@ async function setup() {
   `);
   await db.exec(schema);
   await db.exec(schema2);
+  await db.exec(schema3);
   await db.exec(seed);
   await db.exec(`
     grant usage on schema public, auth to authenticated;
@@ -112,10 +114,10 @@ test("un líder gestiona las tareas de su equipo y asigna a cualquiera", async (
   assert.equal(upd3.rows.length, 0);
 
   // a cada uno le llega el aviso de su asignación (y solo ve los suyos)
-  const n = await as(db, MEMBER, `select kind from public.notifications`);
-  assert.deepEqual(n.rows.map((r) => r.kind), ["asignada"]);
-  const nOther = await as(db, OTHER, `select count(*)::int as n from public.notifications`);
-  assert.equal(nOther.rows[0].n, 1);
+  const n = await as(db, MEMBER, `select kind from public.notifications order by created_at`);
+  assert.deepEqual(n.rows.map((r) => r.kind), ["asignada", "cambio"]);
+  const nOther = await as(db, OTHER, `select kind from public.notifications order by created_at`);
+  assert.deepEqual(nOther.rows.map((r) => r.kind), ["asignada", "cambio"]);
 });
 
 test("roadmap y clientes: solo admin/líder editan", async () => {

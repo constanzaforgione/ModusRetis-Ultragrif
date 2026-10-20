@@ -100,6 +100,8 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
     // Crea las tareas repetitivas que tocan hoy (no duplica) y después carga todo
     Promise.resolve(sb.rpc("spawn_recurring"))
       .catch(() => null)
+      // Avisos del día (vence hoy, venció ayer, proyectos por terminar); no duplica
+      .then(() => Promise.resolve(sb.rpc("daily_notifications")).catch(() => null))
       .then(() => reload())
       .finally(() => setLoading(false));
     const ch = sb.channel("planning");

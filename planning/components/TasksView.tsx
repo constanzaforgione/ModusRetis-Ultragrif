@@ -44,6 +44,26 @@ export function TasksView() {
       setScope("todas");
     }
   }, []);
+
+  // Abrir una tarea desde un aviso: /tareas?tarea=<id>, o el evento "mr-open" si ya estamos acá
+  useEffect(() => {
+    const openId = (id: string | null) => {
+      const t = id ? tasks.find((x) => x.id === id) : undefined;
+      if (t) setOpen(t);
+    };
+    const q = new URLSearchParams(window.location.search).get("tarea");
+    if (q) {
+      openId(q);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent<{ key: string; id: string }>).detail;
+      if (d.key === "tarea") openId(d.id);
+    };
+    window.addEventListener("mr-open", onOpen);
+    return () => window.removeEventListener("mr-open", onOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks.length]);
   useEffect(() => {
     try {
       localStorage.setItem(PREFS, JSON.stringify({ scope, view, hideDone }));

@@ -15,8 +15,9 @@ export async function GET(req: Request) {
   }
   const db = supabaseAdmin();
   const today = todayISO();
-  // Tareas repetitivas del día (también se crean al abrir la app; no duplica)
+  // Tareas repetitivas y avisos del día (también se generan al abrir la app; no duplica)
   await db.rpc("spawn_recurring");
+  await db.rpc("daily_notifications");
 
   const [{ data: profiles, error: e1 }, { data: tasks, error: e2 }] = await Promise.all([
     db.from("profiles").select("*").eq("active", true),
@@ -46,10 +47,6 @@ export async function GET(req: Request) {
     if (mine.length || team.length) digests.push({ p, mine, team });
   }
 
-  if (rows.length) {
-    const { error } = await db.from("notifications").upsert(rows, { onConflict: "user_id,task_id,kind,day", ignoreDuplicates: true });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  }
 
   let emails = 0;
   if (process.env.RESEND_API_KEY) {
@@ -57,7 +54,7 @@ export async function GET(req: Request) {
       if (await sendDigest(d.p, d.mine, d.team, people)) emails++;
     }
   }
-  return NextResponse.json({ ok: true, today, notifications: rows.length, emails });
+  return NextResponse.json({ ok: true, today, alerts: rows.length, emails });
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);

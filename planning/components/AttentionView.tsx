@@ -3,17 +3,20 @@ import { useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { Avatar, ClientTag } from "./ui";
 import { TaskDrawer } from "./TaskDrawer";
+import { NotificationRow } from "./NotificationsMenu";
+import { openFromNotification } from "@/lib/notifications";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { ALERT_META, alertsFor, type Alert, type AlertKind } from "@/lib/alerts";
 import { isStaff, teamIds } from "@/lib/permissions";
 import { STATUS_LABEL, type Task } from "@/lib/types";
-import { fmtShort } from "@/lib/dates";
 
 const KINDS: AlertKind[] = ["vencida", "por_vencer", "bloqueada", "sin_movimiento"];
 
 export function AttentionView() {
   const { me, profiles, tasks, notifications, today, byId, reload } = useData();
   const [open, setOpen] = useState<Task | null>(null);
+  const router = useRouter();
   const [perm, setPerm] = useState(() => (typeof Notification === "undefined" ? "unsupported" : Notification.permission));
   const staff = isStaff(me);
 
@@ -96,17 +99,24 @@ export function AttentionView() {
             )}
           </div>
           {notifications.length ? (
-            notifications.slice(0, 20).map((n) => {
-              const t = n.task_id ? tasks.find((x) => x.id === n.task_id) : undefined;
-              return (
-                <div key={n.id} className={`notif ${n.read_at ? "" : "unread"}`} onClick={() => t && setOpen(t)} style={{ cursor: t ? "pointer" : "default" }}>
-                  <span className="mono muted">{fmtShort(n.created_at.slice(0, 10))}</span>
-                  <div>
-                    <b>{n.message}</b>
-                  </div>
-                </div>
-              );
-            })
+            <div className="notif-list">
+              {notifications.slice(0, 30).map((n) => (
+                <NotificationRow
+                  key={n.id}
+                  n={n}
+                  actor={n.actor_id ? byId.profile.get(n.actor_id) : undefined}
+                  onClick={async () => {
+                    if (!n.read_at) {
+                      await supabaseBrowser().from("notifications").update({ read_at: new Date().toISOString() }).eq("id", n.id);
+                      reload("notifications");
+                    }
+                    const t = n.task_id ? tasks.find((x) => x.id === n.task_id) : undefined;
+                    if (t) setOpen(t);
+                    else openFromNotification(n, router.push);
+                  }}
+                />
+              ))}
+            </div>
           ) : (
             <div className="empty">Sin avisos todavía.</div>
           )}

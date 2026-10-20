@@ -1,21 +1,39 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "./DataProvider";
 import { Avatar } from "./ui";
 import { Iso } from "./Logo";
 import { HoverLayer } from "./HoverLayer";
+import { NotificationsMenu } from "./NotificationsMenu";
 import { alertsFor } from "@/lib/alerts";
 import { ROLE_LABEL } from "@/lib/types";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { me, tasks, notifications, today, loading } = useData();
+  const { me, tasks, notifications, today, loading, toast } = useData();
   const path = usePathname();
 
   const myAlerts = useMemo(() => alertsFor(tasks.filter((t) => t.assignee_id === me.id), today), [tasks, me.id, today]);
   const unread = notifications.filter((n) => !n.read_at).length;
   const urgent = myAlerts.filter((a) => a.kind === "vencida" || a.kind === "por_vencer").length;
+
+  // Avisos nuevos en vivo: cartelito en la app y, si la pestaña no está a la vista, notificación del navegador
+  const seen = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    if (!seen.current) {
+      seen.current = new Set(notifications.map((n) => `${n.id}:${n.created_at}`));
+      return;
+    }
+    const fresh = notifications.filter((n) => !n.read_at && !seen.current!.has(`${n.id}:${n.created_at}`));
+    notifications.forEach((n) => seen.current!.add(`${n.id}:${n.created_at}`));
+    if (!fresh.length) return;
+    toast(fresh.length === 1 ? `🔔 ${fresh[0].message}` : `🔔 Tenés ${fresh.length} avisos nuevos`);
+    if (document.hidden && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("Planning Modus Retis", { body: fresh.length === 1 ? fresh[0].message : `Tenés ${fresh.length} avisos nuevos`, icon: "/icon.svg" });
+    }
+  }, [notifications, loading, toast]);
 
   // Una notificación del navegador por día con el resumen de lo que hay que atender
   useEffect(() => {
@@ -87,13 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               {dark ? "☀" : "☾"}
             </button>
-            <Link href="/atencion" className="iconbtn" aria-label={`Avisos: ${unread} sin leer`} title="Avisos">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-              </svg>
-              {unread > 0 && <span className="badge dot">{unread}</span>}
-            </Link>
+            <NotificationsMenu />
             <div className="who">
               <b>{me.full_name || me.email}</b>
               <small>{ROLE_LABEL[me.role]}</small>

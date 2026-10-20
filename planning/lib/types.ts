@@ -88,6 +88,8 @@ export interface Notification {
   id: string;
   user_id: string;
   task_id: string | null;
+  project_id: string | null;
+  actor_id: string | null;
   kind: string;
   message: string;
   day: string;

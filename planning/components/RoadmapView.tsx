@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useData } from "./DataProvider";
 import { Avatar, CLIENT_COLORS, Modal, SidePanel } from "./ui";
@@ -50,6 +50,25 @@ export function RoadmapView() {
     setReturnTo(from);
     setOpenTaskState(t);
   };
+  // Abrir un proyecto desde un aviso: /roadmap?proyecto=<id>, o el evento "mr-open" si ya estamos acá
+  useEffect(() => {
+    const openId = (id: string | null) => {
+      const p = id ? projects.find((x) => x.id === id) : undefined;
+      if (p) setEditProject(p);
+    };
+    const q = new URLSearchParams(window.location.search).get("proyecto");
+    if (q) {
+      openId(q);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent<{ key: string; id: string }>).detail;
+      if (d.key === "proyecto") openId(d.id);
+    };
+    window.addEventListener("mr-open", onOpen);
+    return () => window.removeEventListener("mr-open", onOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects.length]);
   const backProject = returnTo ? (projects.find((p) => p.id === returnTo.id) ?? returnTo) : null;
 
   const weekly = span.unit === "w";
