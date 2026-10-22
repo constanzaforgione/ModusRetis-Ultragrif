@@ -1,4 +1,4 @@
-// Íconos de cada tipo de aviso y cómo abrir lo que menciona (tarea o proyecto).
+// Íconos de cada tipo de aviso y cómo abrir lo que menciona (tarea, proyecto o pieza de redes).
 import type { Notification } from "./types";
 
 export const NOTIF_ICON: Record<string, string> = {
@@ -19,13 +19,22 @@ export const NOTIF_ICON: Record<string, string> = {
   proyecto_por_terminar: "🏁",
   proyecto_vencido: "⚠️",
   repeticion: "🔁",
+  publicacion_ok: "📣",
+  publicacion_error: "⚠️",
+  publicacion_manual: "✋",
 };
 
 export const iconFor = (n: Notification) => NOTIF_ICON[n.kind] ?? "🔔";
 
 /** Abre la tarea o el proyecto del aviso: si ya estamos en esa pantalla, sin recargar. */
 export function openFromNotification(n: Notification, push: (href: string) => void) {
-  const target = n.task_id ? { path: "/tareas", key: "tarea", id: n.task_id } : n.project_id ? { path: "/roadmap", key: "proyecto", id: n.project_id } : null;
+  const target = n.task_id
+    ? { path: "/tareas", key: "tarea", id: n.task_id }
+    : n.project_id
+      ? { path: "/roadmap", key: "proyecto", id: n.project_id }
+      : n.post_id
+        ? { path: "/rrss", key: "pieza", id: n.post_id }
+        : null;
   if (!target) return;
   if (window.location.pathname.startsWith(target.path)) {
     window.dispatchEvent(new CustomEvent("mr-open", { detail: { key: target.key, id: target.id } }));

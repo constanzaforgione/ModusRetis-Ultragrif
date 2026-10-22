@@ -7,15 +7,27 @@ import { Avatar } from "./ui";
 import { NetBadges } from "./NetBadges";
 import { SocialPostDrawer, type PostDraft } from "./SocialPostDrawer";
 import { SocialImportDialog } from "./SocialImportDialog";
+import { SocialAccountsPanel } from "./SocialAccountsPanel";
 import { addDays, addMonths, fmtMonth, hhmm, startOfMonth, startOfWeek, weekday } from "@/lib/dates";
 import { FORMAT_LABEL, NETWORKS, POST_STATUS, POST_STATUS_META } from "@/lib/social";
 import { isStaff } from "@/lib/permissions";
-import type { Client, Network, PostStatus, SocialPost } from "@/lib/types";
+import type { Client, Network, PostStatus, SocialPost, SocialPublication } from "@/lib/types";
 
 const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MAX_IN_CELL = 4;
 
-function PostChip({ p, client, onOpen, showClient, sel }: { p: SocialPost; client?: Client; onOpen: () => void; showClient?: boolean; sel?: boolean }) {
+/** Cómo va la publicación automática de una pieza, en un ícono */
+export function pubMark(pubs: SocialPublication[]): { icon: string; title: string } | null {
+  if (!pubs.length) return null;
+  if (pubs.some((x) => x.status === "error")) return { icon: "⚠", title: "No se pudo publicar en alguna red" };
+  if (pubs.some((x) => x.status === "manual")) return { icon: "✋", title: "Hay que terminarla a mano en alguna red" };
+  if (pubs.every((x) => x.status === "publicada")) return { icon: "✓", title: "Publicada en todas sus redes" };
+  if (pubs.some((x) => x.status === "procesando")) return { icon: "↻", title: "Publicándose" };
+  return { icon: "⏱", title: "Programada: sale sola" };
+}
+
+function PostChip({ p, client, onOpen, showClient, sel, pubs }: { p: SocialPost; client?: Client; onOpen: () => void; showClient?: boolean; sel?: boolean; pubs: SocialPublication[] }) {
+  const mark = pubMark(pubs);
   return (
     <button
       className={`post-chip st-${p.status} ${sel ? "sel" : ""}`}
@@ -32,13 +44,20 @@ function PostChip({ p, client, onOpen, showClient, sel }: { p: SocialPost; clien
         {showClient && client ? <b>{client.name} · </b> : null}
         {p.title}
       </span>
+      {mark && (
+        <span className={`pub-mark ${mark.icon === "⚠" ? "bad" : ""}`} title={mark.title}>
+          {mark.icon}
+        </span>
+      )}
       <i className={`st-dot ${POST_STATUS_META[p.status].pill}`} title={POST_STATUS_META[p.status].label} />
     </button>
   );
 }
 
 export function SocialView() {
-  const { me, clients, posts, today, byId, loading } = useData();
+  const { me, clients, posts, publications, accounts, today, byId, loading, toast } = useData();
+  const [showAccounts, setShowAccounts] = useState(false);
+  const [choose, setChoose] = useState<string | null>(null);
   const socialClients = clients.filter((c) => c.social && c.active);
   const [onlyClients, setOnlyClients] = useState<Set<string>>(new Set());
   const [onlyNets, setOnlyNets] = useState<Set<Network>>(new Set());
@@ -81,7 +100,24 @@ export function SocialView() {
     }
     const c = q.get("cliente");
     if (c) setOnlyClients(new Set([c]));
-    if ((p || c) && window.location.search) window.history.replaceState(null, "", window.location.pathname);
+    // Vuelta de conectar una cuenta: /rrss?cuentas=1&ok=instagram | &error=… | &elegir=<id>
+    if (q.get("cuentas")) {
+      setShowAccounts(true);
+      if (q.get("ok")) toast(`Cuenta de ${q.get("ok")} conectada`);
+      if (q.get("error")) toast(q.get("error")!, true);
+      if (q.get("elegir")) setChoose(q.get("elegir"));
+    }
+    if ((p || c || q.get("cuentas")) && window.location.search) window.history.replaceState(null, "", window.location.pathname);
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent<{ key: string; id: string }>).detail;
+      const x = d.key === "pieza" ? posts.find((y) => y.id === d.id) : undefined;
+      if (x) {
+        setOpen(x);
+        setAnchor(startOfMonth(x.publish_date));
+      }
+    };
+    window.addEventListener("mr-open", onOpen);
+    return () => window.removeEventListener("mr-open", onOpen);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posts.length]);
 
@@ -151,6 +187,9 @@ export function SocialView() {
           </p>
         </div>
         <div className="actions">
+          <button className="btn" onClick={() => setShowAccounts(true)} title="Cuentas de Instagram, LinkedIn y TikTok de cada cliente">
+            🔗 Cuentas{accounts.some((a) => a.status !== "conectada") ? " ⚠" : ""}
+          </button>
           <button className="btn" onClick={() => setImporting(true)} disabled={!socialClients.length}>
             ⇪ Importar HTML
           </button>
@@ -284,7 +323,7 @@ export function SocialView() {
                     >
                       <span className="cal-num">{Number(d.slice(8))}</span>
                       {list.slice(0, MAX_IN_CELL).map((p) => (
-                        <PostChip key={p.id} p={p} client={byId.client.get(p.client_id)} onOpen={() => setOpen(p)} showClient={!g.client} sel={open?.id === p.id} />
+                        <PostChip key={p.id} p={p} client={byId.client.get(p.client_id)} onOpen={() => setOpen(p)} showClient={!g.client} sel={open?.id === p.id} pubs={publications.filter((x) => x.post_id === p.id)} />
                       ))}
                       {list.length > MAX_IN_CELL && (
                         <button
@@ -307,6 +346,7 @@ export function SocialView() {
       )}
 
       {open && <SocialPostDrawer key={open.id ?? `new-${open.publish_date}`} post={open} onClose={() => setOpen(null)} />}
+      {showAccounts && !open && <SocialAccountsPanel onClose={() => (setShowAccounts(false), setChoose(null))} choose={choose} />}
       {importing && <SocialImportDialog onClose={() => setImporting(false)} onDone={(month) => month && setAnchor(startOfMonth(month))} />}
     </>
   );
@@ -331,7 +371,7 @@ function AgendaList({
   monthStart: string;
   monthEnd: string;
 }) {
-  const { byId, today } = useData();
+  const { byId, today, publications } = useData();
   const byDay = new Map<string, SocialPost[]>();
   for (const p of [...posts].sort((a, b) => a.publish_date.localeCompare(b.publish_date) || (a.publish_time ?? "99").localeCompare(b.publish_time ?? "99")))
     byDay.set(p.publish_date, [...(byDay.get(p.publish_date) ?? []), p]);
@@ -368,6 +408,14 @@ function AgendaList({
                       {p.pillar ? ` · ${p.pillar}` : ""}
                     </small>
                   </div>
+                  {(() => {
+                    const mark = pubMark(publications.filter((x) => x.post_id === p.id));
+                    return mark ? (
+                      <span className={`pub-mark ${mark.icon === "⚠" ? "bad" : ""}`} title={mark.title}>
+                        {mark.icon}
+                      </span>
+                    ) : null;
+                  })()}
                   {who && <Avatar p={who} sm />}
                   <span className={`pill ${POST_STATUS_META[p.status].pill}`}>{POST_STATUS_META[p.status].label}</span>
                 </div>

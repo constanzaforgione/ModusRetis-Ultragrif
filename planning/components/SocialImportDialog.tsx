@@ -89,6 +89,7 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
       cta: r.cta,
       asset_url: r.asset_url,
       notes: [r.notes, fileName ? `Importada de ${fileName}` : ""].filter(Boolean).join("\n"),
+      first_comment: r.first_comment,
       status: r.status ?? "idea",
       assignee_id: me.id,
       created_by: me.id,
@@ -297,6 +298,7 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
                         ["Pilar", r.pillar],
                         ["Brief", r.brief],
                         ["CTA", r.cta],
+                        ["Primer comentario", r.first_comment],
                         ["Arte", r.asset_url],
                         ["Notas", r.notes],
                       ] as const

@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/login", "/auth", "/api/cron"];
+// El publicador (lo llama Supabase con CRON_SECRET) y la vuelta de las redes (state firmado) no usan la sesión
+const PUBLIC = ["/login", "/auth", "/api/cron", "/api/social/run", "/api/social/callback", "/privacidad", "/terminos"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

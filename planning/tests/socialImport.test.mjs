@@ -165,7 +165,7 @@ test("calendario real: Ultragrif LinkedIn (const posts = [...], pilares por cód
   const a = r.pieces[0];
   assert.deepEqual([a.date, a.time, a.format, a.title, a.pillar], ["2026-10-01", "08:30:00", "carrusel", "Agilidad PyME vs. burocracia", "Soluciones para Obras"]);
   assert.match(a.brief, /^Portada: 'Los 3 cuellos de botella/);
-  assert.match(a.notes, /Primer comentario: Conocé cómo trabaja nuestro Departamento de Obras.*https:\/\/ultragrif\.com\.ar/);
+  assert.match(a.first_comment, /^Conocé cómo trabaja nuestro Departamento de Obras.*https:\/\/ultragrif\.com\.ar$/);
   assert.match(a.notes, /Material:\n• Diseño en Canva\n• Fotos del catálogo web/);
   assert.equal(r.pieces.find((p) => p.date === "2026-10-20").format, "articulo");
   assert.equal(r.pieces.find((p) => p.date === "2026-10-22").format, "video");

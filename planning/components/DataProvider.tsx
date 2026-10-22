@@ -2,10 +2,11 @@
 // Carga clientes, roadmap, tareas y equipo una vez y los mantiene al día con Supabase Realtime.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { Client, Notification, Profile, Project, RecurringTask, SocialPost, Task } from "@/lib/types";
+import type { Client, Notification, Profile, Project, RecurringTask, SocialAccount, SocialMedia, SocialPost, SocialPublication, Task } from "@/lib/types";
 import { todayISO } from "@/lib/dates";
 
-type Table = "tasks" | "projects" | "clients" | "profiles" | "notifications" | "recurring_tasks" | "social_posts";
+type Table = "tasks" | "projects" | "clients" | "profiles" | "notifications" | "recurring_tasks" | "social_posts" | "social_media" | "social_accounts" | "social_publications";
+const TABLES: Table[] = ["profiles", "clients", "projects", "tasks", "notifications", "recurring_tasks", "social_posts", "social_media", "social_accounts", "social_publications"];
 
 interface Data {
   me: Profile;
@@ -16,6 +17,9 @@ interface Data {
   recurring: RecurringTask[];
   notifications: Notification[];
   posts: SocialPost[];
+  media: SocialMedia[];
+  accounts: SocialAccount[];
+  publications: SocialPublication[];
   loading: boolean;
   today: string;
   reload: (table?: Table) => Promise<void>;
@@ -54,6 +58,9 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
   const [recurring, setRecurring] = useState<RecurringTask[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
+  const [media, setMedia] = useState<SocialMedia[]>([]);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [publications, setPublications] = useState<SocialPublication[]>([]);
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState<{ msg: string; err: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -86,6 +93,15 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
           // Si todavía no se corrió la migración 0005, la pestaña RRSS queda vacía sin romper el resto
           const { data } = await sb.from("social_posts").select("*").order("publish_date").order("publish_time", { nullsFirst: true });
           if (data) setPosts(data as SocialPost[]);
+        } else if (t === "social_media") {
+          const { data } = await sb.from("social_media").select("*").order("position");
+          if (data) setMedia(data as SocialMedia[]);
+        } else if (t === "social_accounts") {
+          const { data } = await sb.from("social_accounts").select("*");
+          if (data) setAccounts(data as SocialAccount[]);
+        } else if (t === "social_publications") {
+          const { data } = await sb.from("social_publications").select("id, post_id, network, status, scheduled_at, attempts, external_id, permalink, message, published_at, updated_at");
+          if (data) setPublications(data as SocialPublication[]);
         } else if (t === "tasks") {
           const { data } = await sb.from("tasks").select("*").order("due_date", { nullsFirst: false });
           if (data) setTasks(data as Task[]);
@@ -100,7 +116,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
         }
       };
       if (table) await load(table);
-      else await Promise.all((["profiles", "clients", "projects", "tasks", "notifications", "recurring_tasks", "social_posts"] as Table[]).map(load));
+      else await Promise.all(TABLES.map(load));
     },
     [sb, initialMe.id],
   );
@@ -114,7 +130,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
       .then(() => reload())
       .finally(() => setLoading(false));
     const ch = sb.channel("planning");
-    (["tasks", "projects", "clients", "profiles", "notifications", "recurring_tasks", "social_posts"] as Table[]).forEach((t) =>
+    TABLES.forEach((t) =>
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => reload(t)),
     );
     ch.subscribe();
@@ -162,7 +178,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
     [profiles, clients, projects],
   );
 
-  const value: Data = { me, profiles, clients, projects, tasks, recurring, notifications, posts, loading, today, reload, save, remove, toast, byId };
+  const value: Data = { me, profiles, clients, projects, tasks, recurring, notifications, posts, media, accounts, publications, loading, today, reload, save, remove, toast, byId };
 
   return (
     <Ctx.Provider value={value}>

@@ -22,6 +22,7 @@ export interface ImportedPiece {
   asset_url: string;
   status: PostStatus | null;
   notes: string;
+  first_comment: string;
 }
 
 export interface ImportResult {
@@ -152,6 +153,7 @@ const LABELS: [RegExp, Field][] = [
   [/^(cta|llamado a la accion|call to action)$/, "cta"],
   [/^(link|links|url|drive|canva|figma|archivo|material|assets?|arte final)$/, "asset_url"],
   [/^(estado|status|etapa)$/, "status"],
+  [/^(primer comentario|first comment|comentario fijado)$/, "first_comment"],
   [/^(notas?|observaciones|obs|comentarios?|comments?|notes?)$/, "notes"],
 ];
 export function fieldFor(label: string): Field | null {
@@ -163,7 +165,7 @@ export function fieldFor(label: string): Field | null {
 
 const empty = (): ImportedPiece => ({
   date: null, time: null, networks: [], format: null, title: "", copy: "", hashtags: "", pillar: "",
-  brief: "", cta: "", asset_url: "", status: null, notes: "",
+  brief: "", cta: "", asset_url: "", status: null, notes: "", first_comment: "",
 });
 
 const addText = (cur: string, v: string) => (cur ? `${cur}\n${v}` : v);
@@ -554,7 +556,7 @@ const DATA_KEYS: [RegExp, Field | "formats" | "skip", string?][] = [
   [/^(chan|channel|canal destino|link a|destino)$/, "notes", "Link a"],
   [/^(objective|objetivo|goal)$/, "pillar", "Objetivo"],
   [/^(persona|publico|audiencia|audience|target)$/, "notes", "Público"],
-  [/^(comment|primer comentario|first comment)$/, "notes", "Primer comentario"],
+  [/^(comment|primer comentario|first comment)$/, "first_comment"],
   [/^(tips|recomendacion|recomendaciones)$/, "notes", "Recomendación"],
   [/^(planb|plan b)$/, "notes", "Plan B"],
   [/^(verify|chequear|checklist)$/, "notes", "Chequear antes de publicar"],

@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useData } from "./DataProvider";
 import { SidePanel } from "./ui";
+import { MediaManager, PublishPanel, uploadMedia } from "./SocialPublish";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import type { Prepared } from "@/lib/social/files";
 import { NetBadges } from "./NetBadges";
 import { assignableProfiles, canDelete, canEditPost } from "@/lib/permissions";
 import { FORMATS, NETWORKS, POST_STATUS } from "@/lib/social";
@@ -12,7 +15,7 @@ import type { Network, SocialPost } from "@/lib/types";
 export type PostDraft = Partial<SocialPost>;
 
 export function SocialPostDrawer({ post, onClose }: { post: PostDraft; onClose: () => void }) {
-  const { me, profiles, clients, save, remove, toast, byId } = useData();
+  const { me, profiles, clients, media, save, remove, toast, byId, reload } = useData();
   const isNew = !post.id;
   const [f, setF] = useState<PostDraft>({
     networks: ["instagram"],
@@ -27,25 +30,32 @@ export function SocialPostDrawer({ post, onClose }: { post: PostDraft; onClose: 
     asset_url: "",
     post_url: "",
     notes: "",
+    first_comment: "",
     publish_time: null,
     assignee_id: me.id,
     ...post,
   });
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<Prepared[]>([]);
+  const [dirty, setDirty] = useState(false);
   const editable = isNew || canEditPost(me, post, profiles);
   const people = assignableProfiles(me, profiles);
   const socialClients = clients.filter((c) => c.social && (c.active || c.id === f.client_id));
-  const set = <K extends keyof SocialPost>(k: K, v: SocialPost[K] | null) => setF((x) => ({ ...x, [k]: v }));
+  const set = <K extends keyof SocialPost>(k: K, v: SocialPost[K] | null) => {
+    setDirty(true);
+    setF((x) => ({ ...x, [k]: v }));
+  };
   const toggleNet = (n: Network) => {
     const cur = f.networks ?? [];
     set("networks", cur.includes(n) ? cur.filter((x) => x !== n) : NETWORKS.map((x) => x.key).filter((k) => k === n || cur.includes(k)));
   };
 
-  async function submit() {
-    if (!f.title?.trim()) return toast("Poné un tema o título para la pieza", true);
-    if (!f.client_id) return toast("Elegí el cliente", true);
-    if (!f.publish_date) return toast("Elegí la fecha de publicación", true);
-    if (!f.networks?.length) return toast("Elegí al menos una red", true);
+  /** Guarda la pieza (y sube el material en espera). Devuelve el id, o null si no se pudo. */
+  async function persist(over: PostDraft = {}): Promise<string | null> {
+    if (!f.title?.trim()) return toast("Poné un tema o título para la pieza", true), null;
+    if (!f.client_id) return toast("Elegí el cliente", true), null;
+    if (!f.publish_date) return toast("Elegí la fecha de publicación", true), null;
+    if (!f.networks?.length) return toast("Elegí al menos una red", true), null;
     setBusy(true);
     const row: PostDraft = {
       id: f.id,
@@ -63,15 +73,79 @@ export function SocialPostDrawer({ post, onClose }: { post: PostDraft; onClose: 
       asset_url: (f.asset_url ?? "").trim(),
       post_url: (f.post_url ?? "").trim(),
       notes: f.notes ?? "",
+      first_comment: f.first_comment ?? "",
       status: f.status,
       assignee_id: f.assignee_id || null,
       ...(isNew ? { created_by: me.id } : {}),
+      ...over,
     };
-    const { error } = await save<SocialPost>("social_posts", row);
+    const { error, row: saved } = await save<SocialPost>("social_posts", row);
+    if (error || !saved) {
+      setBusy(false);
+      return toast(error ?? "No se pudo guardar", true), null;
+    }
+    if (pending.length) {
+      try {
+        await uploadMedia(saved.id, pending, 0, me.id);
+        setPending([]);
+        await reload("social_media");
+      } catch (e) {
+        toast(`La pieza se guardó, pero no se pudo subir el material: ${(e as Error).message}`, true);
+      }
+    }
     setBusy(false);
-    if (error) return toast(error, true);
-    toast(isNew ? "Pieza programada" : "Cambios guardados");
-    onClose();
+    setDirty(false);
+    setF((x) => ({ ...x, ...saved }));
+    return saved.id;
+  }
+
+  async function submit() {
+    if (await persist()) {
+      toast(isNew ? "Pieza guardada" : "Cambios guardados");
+      onClose();
+    }
+  }
+
+  async function program() {
+    if (!f.publish_time) return toast("Poné la hora de publicación para programarla", true);
+    if (`${f.publish_date}T${f.publish_time}` < new Date().toLocaleString("sv-SE", { timeZone: "America/Argentina/Buenos_Aires" }).replace(" ", "T").slice(0, 16))
+      return toast("Esa fecha y hora ya pasó: elegí otra o usá «Publicar ahora»", true);
+    if (await persist({ status: "programada" })) {
+      toast("Programada: se publica sola a la hora indicada");
+      onClose();
+    }
+  }
+
+  async function unprogram() {
+    if (await persist({ status: "aprobada" })) toast("Se canceló la programación (quedó como Aprobada)");
+  }
+
+  async function publishNow(network?: Network) {
+    if (!network && !confirm("¿Publicar ahora en las redes de la pieza?")) return;
+    const id = dirty || isNew ? await persist() : f.id!;
+    if (!id) return;
+    setBusy(true);
+    toast("Publicando… puede tardar hasta un minuto");
+    try {
+      const res = await fetch("/api/social/publish-now", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ post_id: id, network }) });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "Error");
+      const r = (body.results ?? []) as { kind: string; network: Network; message?: string }[];
+      const done = r.filter((x) => x.kind === "done").length;
+      const waiting = r.filter((x) => x.kind === "wait").length;
+      const bad = r.filter((x) => x.kind === "error" || x.kind === "manual");
+      toast(
+        [done && `Publicada en ${done} ${done === 1 ? "red" : "redes"}`, waiting && `${waiting} procesando (se termina sola en unos minutos)`, bad.length && `${bad.length} con problemas: ${bad.map((x) => x.message).join(" · ")}`]
+          .filter(Boolean)
+          .join(". ") || "No había nada para publicar",
+        bad.length > 0,
+      );
+    } catch (e) {
+      toast((e as Error).message, true);
+    }
+    setBusy(false);
+    reload("social_publications");
+    reload("social_posts");
   }
 
   async function duplicate() {
@@ -85,8 +159,11 @@ export function SocialPostDrawer({ post, onClose }: { post: PostDraft; onClose: 
 
   async function del() {
     if (!post.id || !confirm(`¿Borrar la pieza "${post.title}"? No se puede deshacer.`)) return;
+    const paths = media.filter((m) => m.post_id === post.id).map((m) => m.path);
     const err = await remove("social_posts", post.id);
     if (err) return toast(err, true);
+    // Los archivos no se borran solos con la pieza: liberar el espacio
+    if (paths.length) await supabaseBrowser().storage.from("social").remove(paths);
     toast("Pieza borrada");
     onClose();
   }
@@ -230,7 +307,13 @@ export function SocialPostDrawer({ post, onClose }: { post: PostDraft; onClose: 
         <textarea rows={3} value={f.brief ?? ""} onChange={(e) => set("brief", e.target.value)} disabled={!editable} placeholder="Qué se ve, referencias, indicaciones para diseño o edición" />
       </label>
       <label className="field">
-        <span>Arte / material</span>
+        <span>Primer comentario</span>
+        <input type="text" value={f.first_comment ?? ""} onChange={(e) => set("first_comment", e.target.value)} disabled={!editable} placeholder="Se publica como primer comentario: ideal para el link" />
+      </label>
+      <MediaManager postId={f.id} format={f.format ?? "post"} editable={editable} pending={pending} setPending={(p) => (setPending(p), setDirty(true))} />
+      <PublishPanel draft={f} pending={pending} editable={editable && !busy} dirty={dirty} onProgram={program} onUnprogram={unprogram} onPublishNow={publishNow} />
+      <label className="field">
+        <span>Link al arte editable</span>
         <div className="with-link">
           <input type="url" value={f.asset_url ?? ""} onChange={(e) => set("asset_url", e.target.value)} disabled={!editable} placeholder="Link a Drive, Canva o Figma" />
           {/^https?:\/\//.test(f.asset_url ?? "") && (

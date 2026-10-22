@@ -47,10 +47,62 @@ export interface SocialPost {
   asset_url: string;
   post_url: string;
   notes: string;
+  /** Se publica como primer comentario (ahí suele ir el link) */
+  first_comment: string;
   status: PostStatus;
   assignee_id: string | null;
   created_by: string | null;
   created_at: string;
+  updated_at: string;
+}
+
+/** Foto, video o PDF de una pieza (Supabase Storage, bucket "social") */
+export interface SocialMedia {
+  id: string;
+  post_id: string;
+  path: string;
+  url: string;
+  kind: "image" | "video" | "document";
+  mime: string;
+  size_bytes: number;
+  width: number | null;
+  height: number | null;
+  duration: number | null;
+  position: number;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** Cuenta de un cliente conectada a una red (las credenciales quedan en el servidor) */
+export interface SocialAccount {
+  id: string;
+  client_id: string;
+  network: Network;
+  external_id: string;
+  name: string;
+  username: string;
+  avatar_url: string;
+  status: "conectada" | "vencida" | "error";
+  last_error: string;
+  expires_at: string | null;
+  connected_by: string | null;
+  updated_at: string;
+}
+
+export type PublicationStatus = "pendiente" | "procesando" | "publicada" | "error" | "manual";
+
+/** Publicación de una pieza en una red: cuándo sale y qué pasó */
+export interface SocialPublication {
+  id: string;
+  post_id: string;
+  network: Network;
+  status: PublicationStatus;
+  scheduled_at: string;
+  attempts: number;
+  external_id: string;
+  permalink: string;
+  message: string;
+  published_at: string | null;
   updated_at: string;
 }
 
@@ -126,6 +178,8 @@ export interface Notification {
   user_id: string;
   task_id: string | null;
   project_id: string | null;
+  /** Pieza de redes (avisos de publicación) */
+  post_id?: string | null;
   actor_id: string | null;
   kind: string;
   message: string;
