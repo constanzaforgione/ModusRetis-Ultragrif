@@ -54,7 +54,7 @@ igual funciona, pero carga el texto como una sola tarea.
 
 1. Crear un proyecto en [supabase.com](https://supabase.com) (región São Paulo queda cerca).
 2. **SQL Editor** → pegar y correr `supabase/migrations/0001_init.sql`, después
-   `supabase/migrations/0002_horarios_repeticion_asignacion.sql`, `supabase/migrations/0003_avisos.sql`, `supabase/migrations/0004_varios_responsables.sql`
+   `supabase/migrations/0002_horarios_repeticion_asignacion.sql`, `supabase/migrations/0003_avisos.sql`, `supabase/migrations/0004_varios_responsables.sql`, `supabase/migrations/0005_rrss.sql`
    y por último `supabase/seed.sql`
    (carga Modus Retis, Meli Retis, Ultragrif, Placebo y Odoo).
    Para traer el planning de Lytton (25 tareas y 11 proyectos), correr `supabase/import_planning_lytton.sql`

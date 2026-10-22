@@ -2,10 +2,10 @@
 // Carga clientes, roadmap, tareas y equipo una vez y los mantiene al día con Supabase Realtime.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { Client, Notification, Profile, Project, RecurringTask, Task } from "@/lib/types";
+import type { Client, Notification, Profile, Project, RecurringTask, SocialPost, Task } from "@/lib/types";
 import { todayISO } from "@/lib/dates";
 
-type Table = "tasks" | "projects" | "clients" | "profiles" | "notifications" | "recurring_tasks";
+type Table = "tasks" | "projects" | "clients" | "profiles" | "notifications" | "recurring_tasks" | "social_posts";
 
 interface Data {
   me: Profile;
@@ -15,6 +15,7 @@ interface Data {
   tasks: Task[];
   recurring: RecurringTask[];
   notifications: Notification[];
+  posts: SocialPost[];
   loading: boolean;
   today: string;
   reload: (table?: Table) => Promise<void>;
@@ -37,7 +38,10 @@ function humanError(message: string): string {
   if (/row-level security|permission denied/i.test(message)) return "No tenés permiso para hacer ese cambio.";
   if (/Solo un admin/.test(message)) return message;
   if (/duplicate key.*clients_name/i.test(message)) return "Ya existe un cliente con ese nombre.";
+  if (/social_posts_networks/.test(message)) return "Elegí al menos una red.";
   if (/check constraint/i.test(message)) return "Revisá las fechas: el fin no puede ser antes del inicio.";
+  if (/Solo admins y líderes/.test(message)) return message;
+  if (/social_posts.*(does not exist|schema cache)|Could not find the table/i.test(message)) return "Falta correr en Supabase la migración de RRSS (0005_rrss.sql).";
   return message;
 }
 
@@ -49,6 +53,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
   const [tasks, setTasks] = useState<Task[]>([]);
   const [recurring, setRecurring] = useState<RecurringTask[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState<{ msg: string; err: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -77,6 +82,10 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
         } else if (t === "recurring_tasks") {
           const { data } = await sb.from("recurring_tasks").select("*").eq("active", true);
           if (data) setRecurring(data as RecurringTask[]);
+        } else if (t === "social_posts") {
+          // Si todavía no se corrió la migración 0005, la pestaña RRSS queda vacía sin romper el resto
+          const { data } = await sb.from("social_posts").select("*").order("publish_date").order("publish_time", { nullsFirst: true });
+          if (data) setPosts(data as SocialPost[]);
         } else if (t === "tasks") {
           const { data } = await sb.from("tasks").select("*").order("due_date", { nullsFirst: false });
           if (data) setTasks(data as Task[]);
@@ -91,7 +100,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
         }
       };
       if (table) await load(table);
-      else await Promise.all((["profiles", "clients", "projects", "tasks", "notifications", "recurring_tasks"] as Table[]).map(load));
+      else await Promise.all((["profiles", "clients", "projects", "tasks", "notifications", "recurring_tasks", "social_posts"] as Table[]).map(load));
     },
     [sb, initialMe.id],
   );
@@ -105,7 +114,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
       .then(() => reload())
       .finally(() => setLoading(false));
     const ch = sb.channel("planning");
-    (["tasks", "projects", "clients", "profiles", "notifications", "recurring_tasks"] as Table[]).forEach((t) =>
+    (["tasks", "projects", "clients", "profiles", "notifications", "recurring_tasks", "social_posts"] as Table[]).forEach((t) =>
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => reload(t)),
     );
     ch.subscribe();
@@ -153,7 +162,7 @@ export function DataProvider({ me: initialMe, children }: { me: Profile; childre
     [profiles, clients, projects],
   );
 
-  const value: Data = { me, profiles, clients, projects, tasks, recurring, notifications, loading, today, reload, save, remove, toast, byId };
+  const value: Data = { me, profiles, clients, projects, tasks, recurring, notifications, posts, loading, today, reload, save, remove, toast, byId };
 
   return (
     <Ctx.Provider value={value}>

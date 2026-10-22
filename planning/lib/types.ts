@@ -20,7 +20,38 @@ export interface Client {
   color: string;
   description: string;
   active: boolean;
+  /** Tiene calendario de redes (pestaña RRSS) */
+  social: boolean;
   created_at: string;
+}
+
+export type Network = "instagram" | "linkedin" | "tiktok";
+export type PostFormat = "post" | "carrusel" | "reel" | "historia" | "video" | "articulo";
+export type PostStatus = "idea" | "en_produccion" | "en_revision" | "aprobada" | "programada" | "publicada";
+
+/** Pieza del calendario de redes (supabase/migrations/0005_rrss.sql) */
+export interface SocialPost {
+  id: string;
+  client_id: string;
+  publish_date: string;
+  /** "HH:MM:SS" */
+  publish_time: string | null;
+  networks: Network[];
+  format: PostFormat;
+  title: string;
+  copy: string;
+  hashtags: string;
+  pillar: string;
+  brief: string;
+  cta: string;
+  asset_url: string;
+  post_url: string;
+  notes: string;
+  status: PostStatus;
+  assignee_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Project {

@@ -524,3 +524,74 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 select.person-add { width: auto; border-style: dashed; color: var(--primary); font-weight: 600; padding-top: 4px; padding-bottom: 4px; }
 .people-note { margin-top: 6px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .mini-people { display: inline-flex; align-items: center; padding: 2px; }
+
+/* ---------- RRSS ---------- */
+.s-aprobada { background: color-mix(in srgb, #00c4cc 18%, var(--surface)); color: color-mix(in srgb, #00828a 80%, var(--ink)); }
+.s-programada { background: color-mix(in srgb, #8b5cf6 16%, var(--surface)); color: color-mix(in srgb, #6d3fd8 80%, var(--ink)); }
+.nets { display: inline-flex; gap: 2px; flex: none; }
+.net { font-style: normal; display: inline-grid; place-items: center; min-width: 17px; height: 15px; padding: 0 3px; border-radius: 4px; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
+.net.plain { background: rgba(255, 255, 255, 0.22); }
+.chip .nets { margin-left: -3px; }
+.net-chip:disabled { cursor: default; opacity: 0.8; }
+.rrss-cal { margin-bottom: 22px; }
+.rrss-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; margin: 0 0 8px; }
+.rrss-h .cal-title { display: inline-flex; align-items: center; gap: 8px; text-transform: none; }
+.rrss-h .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.cal-sum { font-size: 12.5px; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.rrss-month .cal-cell { min-height: 124px; }
+.post-chip { display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; border: 1px solid var(--border); border-left: 3px solid; background: var(--surface); border-radius: 6px; padding: 3px 5px; font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer; color: var(--ink); }
+.post-chip .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-chip .mono { font-size: 10.5px; color: var(--muted); }
+.post-chip:hover, .post-chip.sel { border-color: var(--primary); }
+.post-chip.sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); }
+.post-chip.st-publicada { opacity: 0.62; }
+.st-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.st-dot.s-pendiente { background: var(--st-pendiente-dot, #9aa6b8); }
+.st-dot.s-en_curso { background: var(--st-en_curso-dot); }
+.st-dot.s-en_revision { background: var(--st-en_revision-dot); }
+.st-dot.s-aprobada { background: #00a9b0; }
+.st-dot.s-programada { background: #8b5cf6; }
+.st-dot.s-hecha { background: var(--st-hecha-dot); }
+.rrss-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+.rrss-day { display: grid; grid-template-columns: 64px 1fr; border-bottom: 1px solid var(--grid); }
+.rrss-day:last-child { border-bottom: 0; }
+.rrss-day.past { background: color-mix(in srgb, var(--surface2) 40%, var(--surface)); }
+.rrss-date { display: flex; flex-direction: column; align-items: center; padding: 10px 4px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.rrss-date b { font-size: 20px; color: var(--ink); letter-spacing: 0; }
+.rrss-day.today .rrss-date b { color: var(--nowline); }
+.rrss-items { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 8px 0; min-width: 0; }
+.rrss-row { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-left: 4px solid; border-radius: 8px; padding: 8px 10px; cursor: pointer; background: var(--surface); min-width: 0; }
+.rrss-row:hover, .rrss-row.sel { border-color: var(--primary); }
+.rrss-row .rrss-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rrss-row .rrss-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rrss-row .pill { flex: none; }
+.post-head { display: flex; align-items: center; gap: 10px; border-left: 4px solid; padding: 6px 10px; border-radius: 6px; background: var(--surface2); font-size: 13px; }
+.with-link { display: flex; gap: 8px; }
+.with-link input { flex: 1; min-width: 0; }
+.dropzone { border: 2px dashed var(--border); border-radius: var(--r-md); padding: 26px 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; cursor: pointer; margin: 6px 0 12px; }
+.dropzone.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, transparent); }
+.dropzone.ok { border-style: solid; border-color: var(--st-hecha-dot); }
+.modal:has(.imp-list) { width: min(980px, 100%); }
+.imp-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.imp-row { border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+.imp-row.off { opacity: 0.55; }
+.imp-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.imp-main input[type="date"] { width: 150px; }
+.imp-main input.need { border-color: var(--danger); }
+.imp-main select { width: auto; }
+.imp-title { flex: 1 1 220px; min-width: 0; }
+.imp-nets { display: inline-flex; gap: 3px; }
+.net-toggle { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 3px; cursor: pointer; opacity: 0.35; filter: grayscale(1); }
+.net-toggle.on { opacity: 1; filter: none; border-color: var(--primary); }
+.imp-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; padding-left: 26px; min-width: 0; }
+.imp-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.imp-detail { display: grid; gap: 8px; padding: 4px 0 2px 26px; font-size: 13px; }
+.imp-detail .pre { white-space: pre-wrap; word-break: break-word; }
+@media (max-width: 760px) {
+  .rrss-day { grid-template-columns: 48px 1fr; }
+  .rrss-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 8px; padding: 8px; }
+  .rrss-row .rrss-main b { white-space: normal; }
+  .rrss-row .pill { grid-column: 2 / -1; justify-self: start; }
+  .imp-main input[type="date"] { width: 100%; }
+  .imp-flags, .imp-detail { padding-left: 0; }
+}

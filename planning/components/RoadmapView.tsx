@@ -460,6 +460,7 @@ function ClientDialog({ client, onClose }: { client: Partial<Client>; onClose: (
       color: f.color,
       description: f.description ?? "",
       active: f.active ?? true,
+      social: f.social ?? false,
       ...(isNew ? { created_by: me.id } : {}),
     });
     if (error) return toast(error, true);
@@ -502,6 +503,9 @@ function ClientDialog({ client, onClose }: { client: Partial<Client>; onClose: (
       <label className="field">
         <span>Descripción</span>
         <textarea rows={3} value={f.description ?? ""} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Qué hacemos con este cliente" />
+      </label>
+      <label className="toggle">
+        <input type="checkbox" checked={f.social ?? false} onChange={(e) => setF({ ...f, social: e.target.checked })} /> Tiene calendario de redes (aparece en RRSS)
       </label>
       {!isNew && (
         <label className="toggle">

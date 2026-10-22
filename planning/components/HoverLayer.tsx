@@ -8,14 +8,16 @@ import { alertFor } from "@/lib/alerts";
 import { fmtShort, hhmm, relative } from "@/lib/dates";
 import { projectPeople, taskPeople } from "@/lib/people";
 import { PRIORITY_LABEL, PROJECT_STATUS_LABEL, STATUS_LABEL } from "@/lib/types";
+import { FORMAT_LABEL, POST_STATUS_META } from "@/lib/social";
+import { NetBadges } from "./NetBadges";
 
-type Target = { kind: "task" | "project"; id: string; rect: DOMRect };
+type Target = { kind: "task" | "project" | "post"; id: string; rect: DOMRect };
 
 const DELAY = 350;
 const W = 320;
 
 export function HoverLayer() {
-  const { tasks, projects, today, byId } = useData();
+  const { tasks, projects, posts, today, byId } = useData();
   const [target, setTarget] = useState<Target | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const current = useRef<Element | null>(null);
@@ -30,7 +32,7 @@ export function HoverLayer() {
       setTarget(null);
     };
     const over = (e: MouseEvent) => {
-      const el = (e.target as Element).closest?.("[data-hover-task],[data-hover-project]");
+      const el = (e.target as Element).closest?.("[data-hover-task],[data-hover-project],[data-hover-post]");
       if (el === current.current) return;
       clearTimeout(timer.current);
       current.current = el;
@@ -38,8 +40,8 @@ export function HoverLayer() {
       if (!el) return;
       timer.current = setTimeout(() => {
         const h = el as HTMLElement;
-        const kind = h.dataset.hoverTask ? "task" : "project";
-        setTarget({ kind, id: (h.dataset.hoverTask ?? h.dataset.hoverProject)!, rect: h.getBoundingClientRect() });
+        const kind = h.dataset.hoverTask ? "task" : h.dataset.hoverPost ? "post" : "project";
+        setTarget({ kind, id: (h.dataset.hoverTask ?? h.dataset.hoverPost ?? h.dataset.hoverProject)!, rect: h.getBoundingClientRect() });
       }, DELAY);
     };
     document.addEventListener("mouseover", over);
@@ -112,6 +114,43 @@ export function HoverLayer() {
           )}
         </div>
         {t.description && <div className="desc">{t.description}</div>}
+        <div className="hint">Clic para abrir y editar</div>
+      </div>
+    );
+  }
+
+  if (target.kind === "post") {
+    const x = posts.find((y) => y.id === target.id);
+    if (!x) return null;
+    const who = x.assignee_id ? byId.profile.get(x.assignee_id) : undefined;
+    return (
+      <div className="hovercard" ref={cardRef} style={style} role="tooltip">
+        <div className="row">
+          <ClientTag c={byId.client.get(x.client_id)} />
+          <NetBadges nets={x.networks} />
+          <span className="muted">{FORMAT_LABEL[x.format]}</span>
+        </div>
+        <b className="h">{x.title}</b>
+        <div className="row">
+          <span className={`pill ${POST_STATUS_META[x.status].pill}`}>{POST_STATUS_META[x.status].label}</span>
+          <span className="muted">
+            {fmtShort(x.publish_date)}
+            {x.publish_time ? ` · ${hhmm(x.publish_time)}` : ""}
+          </span>
+        </div>
+        <div className="kv">
+          <span>Responsable</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{who ? <><Avatars people={[who]} sm /> {who.full_name}</> : "Sin asignar"}</span>
+          {x.pillar && (
+            <>
+              <span>Pilar</span>
+              <span>{x.pillar}</span>
+            </>
+          )}
+          <span>Arte</span>
+          <span>{x.asset_url ? "Con link" : "Sin link todavía"}</span>
+        </div>
+        {x.copy && <div className="desc">{x.copy}</div>}
         <div className="hint">Clic para abrir y editar</div>
       </div>
     );

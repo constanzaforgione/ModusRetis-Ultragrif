@@ -74,6 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const tabs = [
     { href: "/roadmap", label: "Roadmap" },
     { href: "/tareas", label: "Tareas" },
+    { href: "/rrss", label: "RRSS" },
     { href: "/atencion", label: "Atención", badge: myAlerts.length },
     { href: "/equipo", label: "Equipo" },
   ];
