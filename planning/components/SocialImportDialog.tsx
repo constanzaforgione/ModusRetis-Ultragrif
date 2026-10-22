@@ -21,7 +21,7 @@ const METHOD_LABEL: Record<NonNullable<ImportResult["method"]>, string> = {
 };
 
 export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; onDone: (firstDate: string | null) => void }) {
-  const { me, clients, posts, toast, reload } = useData();
+  const { me, clients, posts, today, toast, reload } = useData();
   const socialClients = clients.filter((c) => c.social && c.active);
   const [stage, setStage] = useState<"archivo" | "revisar">("archivo");
   const [html, setHtml] = useState("");
@@ -228,6 +228,14 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
               </div>
             </div>
           </div>
+          {rows.some((r) => r.date && r.date < today && r.status !== "publicada") && (
+            <div className="notice">
+              {rows.filter((r) => r.date && r.date < today).length} piezas tienen fecha anterior a hoy.{" "}
+              <button className="btn sm" onClick={() => setRows((rs) => rs.map((r) => (r.date && r.date < today ? { ...r, status: "publicada" } : r)))}>
+                Marcarlas como publicadas
+              </button>
+            </div>
+          )}
           <div className="imp-list">
             {rows.map((r, i) => (
               <div key={i} className={`imp-row ${r.on ? "" : "off"}`}>

@@ -123,7 +123,7 @@ export function detectFormat(text: string): PostFormat | null {
   if (/historias?\b|stor(y|ies)\b/.test(t)) return "historia";
   if (/articulo|article|newsletter|nota\b/.test(t)) return "articulo";
   if (/\bvideos?\b|youtube|short/.test(t)) return "video";
-  if (/\bpost\b|posteo|publicacion|placa|imagen|estatic|foto|feed/.test(t)) return "post";
+  if (/\bpost\b|posteo|publicacion|placa|imagen|estatic|foto|feed|infograf/.test(t)) return "post";
   return null;
 }
 
@@ -179,10 +179,6 @@ function setField(p: ImportedPiece, f: Field, raw: string, ctx: Ctx, label?: str
     case "time":
       p.time ??= parseTime(v);
       break;
-    case "networks":
-      for (const n of detectNetworks(v)) if (!p.networks.includes(n)) p.networks.push(n);
-      p.format ??= detectFormat(v);
-      break;
     case "format":
       p.format ??= detectFormat(v);
       for (const n of detectNetworks(v)) if (!p.networks.includes(n)) p.networks.push(n);
@@ -192,8 +188,16 @@ function setField(p: ImportedPiece, f: Field, raw: string, ctx: Ctx, label?: str
       break;
     case "title":
       if (!p.title) p.title = v.slice(0, 200);
+      else if (v.length > 80) p.brief = addText(p.brief, v);
       else p.notes = addText(p.notes, `${label ?? "Tema"}: ${v}`);
       break;
+    case "networks": {
+      const nets = detectNetworks(v);
+      for (const n of nets) if (!p.networks.includes(n)) p.networks.push(n);
+      p.format ??= detectFormat(v);
+      if (!nets.length && label) p.notes = addText(p.notes, `${label}: ${v}`);
+      break;
+    }
     case "hashtags":
       p.hashtags = addText(p.hashtags, v);
       break;
@@ -369,10 +373,19 @@ function pieceFromElement(el: Element, ctx: Ctx, base?: Partial<ImportedPiece>):
 }
 
 // ---------------------------------------------------------------- 1. datos en <script>
-/** Convierte un literal JS (claves sin comillas, comillas simples, comas finales, comentarios) a JSON */
-export function jsToJson(src: string): string {
+// Muchos calendarios (los armados con IA, por ejemplo) guardan las piezas en el código y las dibujan con
+// JavaScript: const posts = [{ date, topic, copy… }] o const data = { 3: { f: ["reel"], product… } }.
+// No se ejecuta nada: se leen los literales, con sus constantes (const LINK = "…") y sus diccionarios.
+
+/** Convierte un literal JS a JSON: claves sin comillas o numéricas, comillas simples, comas finales,
+ *  comentarios, constantes conocidas, "texto" + CONSTANTE y llamadas a funciones (quedan en null) */
+export function jsToJson(src: string, consts: Map<string, unknown> = new Map()): string {
   let out = "";
   let i = 0;
+  const nextChar = (k: number) => {
+    while (/\s/.test(src[k] ?? "")) k++;
+    return { k, c: src[k] };
+  };
   while (i < src.length) {
     const c = src[i];
     if (c === '"' || c === "'" || c === "`") {
@@ -403,23 +416,47 @@ export function jsToJson(src: string): string {
       i += 2;
       continue;
     }
+    if (/[0-9]/.test(c) && !/[\w$.]/.test(src[i - 1] ?? "")) {
+      let j = i;
+      while (/[0-9.]/.test(src[j] ?? "")) j++;
+      const num = src.slice(i, j);
+      out += nextChar(j).c === ":" ? JSON.stringify(num) : num; // { 3: {...} } → { "3": {...} }
+      i = j;
+      continue;
+    }
     if (/[A-Za-z_$]/.test(c)) {
       let j = i;
       while (j < src.length && /[\w$]/.test(src[j])) j++;
       const word = src.slice(i, j);
-      let k = j;
-      while (/\s/.test(src[k] ?? "")) k++;
-      if (src[k] === ":") out += JSON.stringify(word);
+      const nx = nextChar(j);
+      if (nx.c === ":" && src[nx.k + 1] !== ":") out += JSON.stringify(word);
       else if (["true", "false", "null"].includes(word)) out += word;
       else if (word === "undefined") out += "null";
+      else if (nx.c === "(") {
+        // R(), R(0, "Día libre") → null: no se ejecuta código
+        let depth = 0;
+        let q: string | null = null;
+        let k = nx.k;
+        for (; k < src.length; k++) {
+          const ch = src[k];
+          if (q) {
+            if (ch === "\\") k++;
+            else if (ch === q) q = null;
+          } else if (ch === '"' || ch === "'" || ch === "`") q = ch;
+          else if (ch === "(") depth++;
+          else if (ch === ")" && --depth === 0) break;
+        }
+        out += "null";
+        i = k + 1;
+        continue;
+      } else if (consts.has(word)) out += JSON.stringify(consts.get(word));
       else throw new Error(`identificador ${word}`);
       i = j;
       continue;
     }
     if (c === ",") {
-      let k = i + 1;
-      while (/\s/.test(src[k] ?? "")) k++;
-      if (src[k] === "]" || src[k] === "}") {
+      const nx = nextChar(i + 1);
+      if (nx.c === "]" || nx.c === "}") {
         i++;
         continue;
       }
@@ -427,14 +464,56 @@ export function jsToJson(src: string): string {
     out += c;
     i++;
   }
+  // "texto: " + "https://…" → un solo texto
+  const STR = String.raw`"(?:[^"\\]|\\.)*"`;
+  const concat = new RegExp(`(${STR})\\s*\\+\\s*(${STR})`);
+  for (let m = out.match(concat); m; m = out.match(concat)) out = out.replace(m[0], JSON.stringify(JSON.parse(m[1]) + JSON.parse(m[2])));
   return out;
 }
 
-/** Arreglos de objetos ([ { … }, … ]) que aparezcan en el código */
-function arraysInScript(code: string): unknown[] {
-  const found: unknown[] = [];
-  const re = /\[\s*\{/g;
+/** Hasta dónde llega el valor que empieza en `from` (el ; o fin de línea fuera de strings y paréntesis) */
+function exprEnd(code: string, from: number): number {
+  let depth = 0;
+  let q: string | null = null;
+  for (let i = from; i < code.length; i++) {
+    const c = code[i];
+    if (q) {
+      if (c === "\\") i++;
+      else if (c === q) q = null;
+      continue;
+    }
+    if (c === "/" && code[i + 1] === "/" && depth === 0) return i;
+    if (c === '"' || c === "'" || c === "`") q = c;
+    else if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c)) depth--;
+    else if (depth === 0 && (c === ";" || c === "\n")) {
+      // una línea que termina con + o , sigue en la de abajo
+      if (c === "\n" && /[+,]\s*$/.test(code.slice(from, i))) continue;
+      return i;
+    }
+  }
+  return code.length;
+}
+
+/** Literales del script: const/let/var con valor simple (texto, número, arreglo u objeto), más arreglos sueltos */
+function literalsInScript(code: string): { consts: Map<string, unknown>; values: unknown[] } {
+  const consts = new Map<string, unknown>();
+  const values: unknown[] = [];
+  const decl = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*/g;
   let m: RegExpExecArray | null;
+  while ((m = decl.exec(code))) {
+    const from = m.index + m[0].length;
+    const end = exprEnd(code, from);
+    try {
+      const v = JSON.parse(jsToJson(code.slice(from, end), consts));
+      consts.set(m[1], v);
+      if (v && typeof v === "object") values.push(v);
+    } catch {
+      // función, cálculo o algo que no es un dato: se ignora
+    }
+  }
+  // Arreglos sin nombre: render([{ … }])
+  const re = /\[\s*\{/g;
   while ((m = re.exec(code))) {
     let depth = 0;
     let q: string | null = null;
@@ -448,65 +527,142 @@ function arraysInScript(code: string): unknown[] {
       }
       if (c === '"' || c === "'" || c === "`") q = c;
       else if (c === "[" || c === "{") depth++;
-      else if (c === "]" || c === "}") {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
+      else if ((c === "]" || c === "}") && --depth === 0) {
+        end = i;
+        break;
       }
     }
     if (end < 0) break;
     try {
-      found.push(JSON.parse(jsToJson(code.slice(m.index, end + 1))));
+      values.push(JSON.parse(jsToJson(code.slice(m.index, end + 1), consts)));
       re.lastIndex = end + 1;
-    } catch {
-      // no era un literal simple: se sigue buscando adentro
-    }
+    } catch {}
   }
-  return found;
+  return { consts, values };
 }
 
-const TITLE_KEYS = ["title", "titulo", "tema", "idea", "concepto", "nombre", "name", "copy", "caption", "texto", "text", "headline", "hook", "gancho"];
+const TITLE_KEYS = ["title", "titulo", "tema", "topic", "idea", "nombre", "name", "product", "producto", "copy", "caption", "texto", "text", "headline", "hook", "gancho"];
 
-/** Recorre los datos: cada objeto con texto es una pieza; fecha, red y cliente se heredan de los contenedores */
-function piecesFromData(data: unknown, ctx: Ctx): ImportedPiece[] {
+// Claves habituales en datos de calendarios → campo (y rótulo cuando va a notas o brief)
+const DATA_KEYS: [RegExp, Field | "formats" | "skip", string?][] = [
+  [/^(product|producto|topic|tema|asunto)$/, "title"],
+  [/^(f|fmt|formats|formatos|tipos)$/, "formats"],
+  [/^(creative|creatividad|arte|visual|direccion de arte|brief)$/, "brief"],
+  [/^(concept|concepto|idea central)$/, "brief", "Concepto"],
+  [/^(dev|desarrollo|guion|script|slides|placas|escenas)$/, "brief", "Desarrollo"],
+  [/^(prod|produccion|material de produccion)$/, "notes", "Producción"],
+  [/^(chan|channel|canal destino|link a|destino)$/, "notes", "Link a"],
+  [/^(objective|objetivo|goal)$/, "pillar", "Objetivo"],
+  [/^(persona|publico|audiencia|audience|target)$/, "notes", "Público"],
+  [/^(comment|primer comentario|first comment)$/, "notes", "Primer comentario"],
+  [/^(tips|recomendacion|recomendaciones)$/, "notes", "Recomendación"],
+  [/^(planb|plan b)$/, "notes", "Plan B"],
+  [/^(verify|chequear|checklist)$/, "notes", "Chequear antes de publicar"],
+  [/^(warn|warning|atencion|ojo)$/, "notes", "Atención"],
+  [/^(src|source|sources|fuentes|material|materiales)$/, "notes", "Material"],
+  [/^(via|red|network|platform)$/, "networks"],
+  [/^(id|key|color|icon|emoji|order|orden|changed|cambio|label|rest|ready|listo|done)$/, "skip"],
+];
+function dataField(key: string): [Field | "formats" | "skip", string?] | null {
+  const k = norm(key).replace(/[_-]+/g, " ");
+  for (const [re, f, label] of DATA_KEYS) if (re.test(k)) return [f, label];
+  const f = fieldFor(key);
+  return f ? [f] : null;
+}
+
+/** Formatos en lista (["reel", "st"]): el principal y si además lleva historias */
+function formatFromList(list: string[]): { format: PostFormat | null; stories: boolean } {
+  const fmts = list.map((x) => {
+    const t = norm(String(x));
+    if (/^(st|sts|story|stories|historias?)$/.test(t)) return "historia" as PostFormat;
+    if (/^carr/.test(t)) return "carrusel" as PostFormat;
+    return detectFormat(t);
+  });
+  const main = fmts.find((f) => f && f !== "historia") ?? fmts.find(Boolean) ?? null;
+  return { format: main, stories: main !== "historia" && fmts.includes("historia") };
+}
+
+const clean = (s: string) =>
+  s
+    .replace(/^\s*[—–-]\s*$/, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .trim();
+
+/** Recorre los datos: cada objeto con texto es una pieza; la fecha sale del propio objeto, de una clave de día
+ *  ({ 3: {...} } = día 3 del mes) o de un contenedor. Los códigos (pillar: "p2") se traducen con los diccionarios del script. */
+function piecesFromData(data: unknown, ctx: Ctx, dicts: unknown[] = []): ImportedPiece[] {
   const out: ImportedPiece[] = [];
-  const walk = (v: unknown, inherited: Partial<ImportedPiece>, depth: number) => {
-    if (depth > 8 || v == null) return;
+  const lookup = (code: string): string => {
+    for (const d of dicts) {
+      if (!d || typeof d !== "object" || Array.isArray(d) || !(code in (d as object))) continue;
+      const v = (d as Record<string, unknown>)[code];
+      if (typeof v === "string") return v;
+      if (v && typeof v === "object") {
+        const o = v as Record<string, unknown>;
+        const name = o.name ?? o.nombre ?? o.label ?? o.title ?? o.titulo;
+        if (typeof name === "string") return name;
+      }
+    }
+    return code;
+  };
+  const put = (p: ImportedPiece, f: Field, v: string, label?: string) => {
+    if (!v) return;
+    if (f === "pillar" && p.pillar) return void (p.notes = addText(p.notes, `${label ?? "Pilar"}: ${v}`));
+    if ((f === "notes" || f === "brief") && label) v = v.includes("\n") ? `${label}:\n${v}` : `${label}: ${v}`;
+    setField(p, f, v, ctx, label);
+  };
+  const walk = (v: unknown, inherited: Partial<ImportedPiece>, depth: number, key?: string) => {
+    if (depth > 8 || v == null || typeof v !== "object") return;
     if (Array.isArray(v)) return v.forEach((x) => walk(x, inherited, depth + 1));
-    if (typeof v !== "object") return;
     const o = v as Record<string, unknown>;
+    if (o.rest === true || o.descanso === true || o.libre === true) return; // días sin publicación
     const p = { ...empty(), ...inherited, networks: [...(inherited.networks ?? [])] };
+    if (!p.date && key && /^\d{1,2}$/.test(key) && ctx.month) p.date = iso(ctx.year, ctx.month, Number(key));
     let mon: number | null = null;
     let dayN: number | null = null;
     let hasText = false;
-    const nested: unknown[] = [];
+    const nested: [string, unknown][] = [];
     for (const [k, val] of Object.entries(o)) {
       const nk = norm(k);
-      if (Array.isArray(val) || (val && typeof val === "object")) {
-        if (/^(redes|networks|platforms|plataformas|canales)$/.test(nk) && Array.isArray(val)) setField(p, "networks", val.join(" "), ctx);
-        else if (/^(hashtags|tags)$/.test(nk) && Array.isArray(val)) setField(p, "hashtags", val.map((x) => String(x)).map((x) => (x.startsWith("#") ? x : `#${x}`)).join(" "), ctx);
-        else nested.push(val);
+      const df = dataField(k);
+      if (df?.[0] === "skip") {
+        if (/^(ready|listo|done)$/.test(nk) && val === true) p.status ??= "aprobada";
         continue;
       }
-      if (val == null || val === "") continue;
-      const s = String(val);
+      if (val == null || val === "" || typeof val === "boolean") continue;
+      if (Array.isArray(val) && val.every((x) => x == null || typeof x !== "object")) {
+        const items = val.filter((x) => x != null && x !== "").map((x) => clean(lookup(String(x))));
+        if (!items.length) continue;
+        if (df?.[0] === "formats" || (df?.[0] === "format" && items.length > 1)) {
+          const { format, stories } = formatFromList(items);
+          p.format ??= format;
+          if (stories) p.notes = addText(p.notes, "También lleva stories.");
+        } else if (df?.[0] === "networks" || /^(redes|networks|platforms|plataformas|canales)$/.test(nk)) setField(p, "networks", items.join(" "), ctx);
+        else if (df?.[0] === "hashtags" || /^(hashtags|tags)$/.test(nk)) setField(p, "hashtags", items.map((x) => (x.startsWith("#") ? x : `#${x}`)).join(" "), ctx);
+        else if (df) put(p, df[0], df[0] === "brief" || df[0] === "notes" ? items.map((x) => `• ${x}`).join("\n") : items.join(", "), df[1] ?? (df[0] === "notes" ? k : undefined));
+        continue;
+      }
+      if (typeof val === "object") {
+        nested.push([k, val]);
+        continue;
+      }
+      const s = clean(String(val));
       if (/^(mes|month)$/.test(nk)) {
         mon = typeof val === "number" ? val : (MONTHS[norm(s)] ?? (Number(s) || null));
         continue;
       }
       if (/^(anio|ano|year)$/.test(nk)) continue;
-      const f = fieldFor(k) ?? (nk === "red" || nk === "network" || nk === "platform" ? "networks" : null);
+      const f = df?.[0] === "formats" ? "format" : (df?.[0] as Field | undefined);
       if (f === "date" && /^\d{1,2}$/.test(s)) {
         dayN = Number(s);
         continue;
       }
       if (f) {
-        setField(p, f, s, ctx, k);
-        if (TITLE_KEYS.includes(nk) || f === "copy" || f === "brief") hasText = true;
-      } else if (/^(id|key|color|icon|emoji|order|orden)$/.test(nk)) {
-        continue;
+        put(p, f, f === "pillar" ? lookup(s) : s, df?.[1]);
+        if (TITLE_KEYS.includes(nk) || f === "title" || f === "copy") hasText = true;
       } else if (s.length < 300) {
         p.notes = addText(p.notes, `${k}: ${s}`);
       }
@@ -522,7 +678,7 @@ function piecesFromData(data: unknown, ctx: Ctx): ImportedPiece[] {
     if (p.time) inh.time = p.time;
     if (p.networks.length) inh.networks = p.networks;
     if (p.format) inh.format = p.format;
-    nested.forEach((n) => walk(n, hasText ? inherited : inh, depth + 1));
+    nested.forEach(([k, n]) => walk(n, hasText ? inherited : inh, depth + 1, k));
   };
   walk(data, {}, 0);
   return out;
@@ -531,18 +687,19 @@ function piecesFromData(data: unknown, ctx: Ctx): ImportedPiece[] {
 function fromScripts(doc: Document, ctx: Ctx): ImportedPiece[] {
   let best: ImportedPiece[] = [];
   for (const s of doc.querySelectorAll("script:not([src])")) {
-    const code = s.textContent ?? "";
-    for (const arr of arraysInScript(code)) {
-      const pieces = piecesFromData(arr, ctx).filter((p) => p.date);
+    const type = s.getAttribute("type") ?? "";
+    if (/json/.test(type)) {
+      try {
+        const pieces = piecesFromData(JSON.parse(s.textContent ?? ""), ctx).filter((p) => p.date);
+        if (pieces.length > best.length) best = pieces;
+      } catch {}
+      continue;
+    }
+    const { values } = literalsInScript(s.textContent ?? "");
+    for (const v of values) {
+      const pieces = piecesFromData(v, ctx, values).filter((p) => p.date);
       if (pieces.length > best.length) best = pieces;
     }
-  }
-  // JSON embebido (<script type="application/json">)
-  for (const s of doc.querySelectorAll('script[type="application/json"], script[type="application/ld+json"]')) {
-    try {
-      const pieces = piecesFromData(JSON.parse(s.textContent ?? ""), ctx).filter((p) => p.date);
-      if (pieces.length > best.length) best = pieces;
-    } catch {}
   }
   return best;
 }
@@ -731,7 +888,7 @@ function inheritedDate(el: Element, ctx: Ctx): string | null {
 // ---------------------------------------------------------------- entrada
 /** Año y mes de referencia: "Calendario Octubre 2026" en el título o encabezados */
 function docContext(doc: Document, fallbackYear: number): Ctx {
-  const heads = [doc.title, ...[...doc.querySelectorAll("h1, h2, h3, header, caption")].slice(0, 10).map((e) => e.textContent ?? "")].join(" · ");
+  const heads = [doc.title || doc.querySelector("title")?.textContent || "", ...[...doc.querySelectorAll("h1, h2, h3, header, caption")].slice(0, 10).map((e) => e.textContent ?? "")].join(" · ");
   const m = norm(heads).match(new RegExp(`\\b(${MONTH_RE})\\b\\.?\\s*(?:de\\s+|del\\s+)?(20\\d\\d)`));
   if (m) return { year: +m[2], month: MONTHS[m[1]] };
   const y = norm(heads).match(/\b(20\d\d)\b/) ?? norm((doc.body?.textContent ?? "").slice(0, 4000)).match(/\b(20\d\d)\b/);
@@ -741,7 +898,8 @@ function docContext(doc: Document, fallbackYear: number): Ctx {
 
 export function parseSocialCalendar(doc: Document, opts: { clients: string[]; fileName?: string; year?: number }): ImportResult {
   const ctx = docContext(doc, opts.year ?? new Date().getFullYear());
-  const heads = norm([opts.fileName ?? "", doc.title, ...[...doc.querySelectorAll("h1, h2, header")].slice(0, 6).map((e) => e.textContent ?? "")].join(" "));
+  const title = doc.title || doc.querySelector("title")?.textContent || "";
+  const heads = norm([(opts.fileName ?? "").replace(/[_-]+/g, " "), title, ...[...doc.querySelectorAll("h1, h2, header")].slice(0, 6).map((e) => e.textContent ?? "")].join(" "));
   const client = opts.clients.find((c) => heads.includes(norm(c))) ?? null;
 
   let method: ImportResult["method"] = null;
@@ -755,6 +913,10 @@ export function parseSocialCalendar(doc: Document, opts: { clients: string[]; fi
     const c = fromCards(doc, ctx);
     if (c.pieces.length) [pieces, method] = [c.pieces, c.grid ? "grilla" : "tarjetas"];
   }
+  // Calendario de una sola red ("LinkedIn · Ultragrif", "Instagram · @marca"): esa red para las piezas que no dicen
+  const heading = [title, (opts.fileName ?? "").replace(/[_-]+/g, " "), ...[...doc.querySelectorAll("header, h1, .eyebrow")].slice(0, 4).map((e) => (e.textContent ?? "").slice(0, 300))].join(" · ");
+  const docNets = detectNetworks(heading);
+  if (docNets.length === 1) for (const p of pieces) if (!p.networks.length) p.networks = [...docNets];
   pieces.sort((a, b) => (a.date ?? "9").localeCompare(b.date ?? "9") || (a.time ?? "99").localeCompare(b.time ?? "99"));
   return { pieces, client, method, year: ctx.year };
 }

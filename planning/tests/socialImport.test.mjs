@@ -152,3 +152,41 @@ test("un HTML sin calendario no inventa piezas", () => {
   assert.equal(r.pieces.length, 0);
   assert.equal(r.method, null);
 });
+
+// Calendarios reales del equipo (generados con IA: los datos están en el <script>)
+const fixture = (f) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8");
+
+test("calendario real: Ultragrif LinkedIn (const posts = [...], pilares por código, LINK concatenado)", () => {
+  const r = parse(fixture("ultragrif-linkedin-octubre-2026.html"), "Ultragrif_LinkedIn_Octubre_2026_1.html");
+  assert.equal(r.method, "script");
+  assert.equal(r.client, "Ultragrif");
+  assert.equal(r.pieces.length, 13);
+  assert.ok(r.pieces.every((p) => p.networks.join() === "linkedin" && p.status === "aprobada" && p.copy && p.hashtags));
+  const a = r.pieces[0];
+  assert.deepEqual([a.date, a.time, a.format, a.title, a.pillar], ["2026-10-01", "08:30:00", "carrusel", "Agilidad PyME vs. burocracia", "Soluciones para Obras"]);
+  assert.match(a.brief, /^Portada: 'Los 3 cuellos de botella/);
+  assert.match(a.notes, /Primer comentario: Conocé cómo trabaja nuestro Departamento de Obras.*https:\/\/ultragrif\.com\.ar/);
+  assert.match(a.notes, /Material:\n• Diseño en Canva\n• Fotos del catálogo web/);
+  assert.equal(r.pieces.find((p) => p.date === "2026-10-20").format, "articulo");
+  assert.equal(r.pieces.find((p) => p.date === "2026-10-22").format, "video");
+});
+
+test("calendario real: Confort Iván (const data = { día: {...} }, días libres con R())", () => {
+  const r = parse(fixture("confort-ivan-octubre-2026.html"), "Confort_Ivan___Octubre_2026_1.html");
+  assert.equal(r.method, "script");
+  assert.equal(r.client, "Confort Iván");
+  assert.equal(r.pieces.length, 16);
+  assert.ok(r.pieces.every((p) => p.networks.join() === "instagram"));
+  assert.deepEqual(
+    r.pieces.map((p) => `${p.date.slice(8)} ${p.format}`),
+    ["03 reel", "05 historia", "07 carrusel", "08 reel", "11 carrusel", "13 reel", "15 post", "16 historia", "18 historia", "19 historia", "20 reel", "22 carrusel", "24 post", "26 historia", "27 reel", "30 historia"],
+  );
+  const a = r.pieces[0];
+  assert.equal(a.title, "Sillas respaldo alto");
+  assert.equal(a.hashtags, "#SillasDeComedor #ConfortIvan #DecoHogar #Comedor");
+  assert.doesNotMatch(a.copy, /#SillasDeComedor/);
+  assert.equal(a.cta, "Link en bio");
+  assert.match(a.brief, /Concepto: Mostrar un básico[\s\S]*Desarrollo:\n• Reel de 7 a 10 segundos/);
+  assert.match(a.notes, /También lleva stories\.\nLink a: Web confortivan\.com\.ar\nProducción: /);
+  assert.doesNotMatch(r.pieces[1].notes, /Link a/); // "—" no se importa
+});

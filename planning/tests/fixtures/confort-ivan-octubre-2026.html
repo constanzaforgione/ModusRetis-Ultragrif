@@ -1,0 +1,535 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Confort Ivan · Octubre 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+<style>
+/* Layout: cabecera editorial + grilla mensual (7 columnas, lista en celular) + ficha de cada día en un diálogo. Paleta Higo de la Guía de redes. */
+:root{
+  --bg:#F1E6DA;          /* Cachemira */
+  --surface:#FBF6F0;
+  --surface-2:#F6EDE3;
+  --line:#E2D2C2;
+  --fg:#2E1219;
+  --muted:#7A5F64;
+  --higo:#5B2333;
+  --oliva:#6E7031;
+  --rosa:#B87A84;
+  --jazmin:#EED79A;
+  --oro:#C99A2E;
+  --on-higo:#F1E6DA;
+  --chip-reel:#5B2333; --chip-reel-fg:#F1E6DA;
+  --chip-carr:#6E7031; --chip-carr-fg:#F7F2E4;
+  --chip-post:#C99A2E; --chip-post-fg:#2E1219;
+  --chip-st:#EBD3D6;   --chip-st-fg:#5B2333;
+  --warn-bg:#F7EBC6; --warn-fg:#5E4510;
+  --new-bg:#E7E8CF; --new-fg:#474820;
+  --font-display:"DM Serif Display", Georgia, "Times New Roman", serif;
+  --font-body:"DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1C0F13; --surface:#28161C; --surface-2:#321C23; --line:#462C34;
+    --fg:#F1E6DA; --muted:#BFA6A9;
+    --higo:#E3A9B4; --oliva:#B9BC72; --rosa:#D9A3AC; --jazmin:#EED79A; --oro:#E0B65A;
+    --on-higo:#1C0F13;
+    --chip-reel:#7A3346; --chip-reel-fg:#F7E9EC;
+    --chip-carr:#5F6129; --chip-carr-fg:#F4F2DE;
+    --chip-post:#A37C22; --chip-post-fg:#1C0F13;
+    --chip-st:#4A2A32; --chip-st-fg:#F0CCD2;
+    --warn-bg:#3D3115; --warn-fg:#F2DA98;
+    --new-bg:#33341A; --new-fg:#DADC9B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1C0F13; --surface:#28161C; --surface-2:#321C23; --line:#462C34;
+  --fg:#F1E6DA; --muted:#BFA6A9;
+  --higo:#E3A9B4; --oliva:#B9BC72; --rosa:#D9A3AC; --jazmin:#EED79A; --oro:#E0B65A;
+  --on-higo:#1C0F13;
+  --chip-reel:#7A3346; --chip-reel-fg:#F7E9EC;
+  --chip-carr:#5F6129; --chip-carr-fg:#F4F2DE;
+  --chip-post:#A37C22; --chip-post-fg:#1C0F13;
+  --chip-st:#4A2A32; --chip-st-fg:#F0CCD2;
+  --warn-bg:#3D3115; --warn-fg:#F2DA98;
+  --new-bg:#33341A; --new-fg:#DADC9B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:clamp(16px,3vw,32px);padding-block:28px 56px;display:grid;gap:28px}
+h1,h2,h3{font-family:var(--font-display);font-weight:400;text-wrap:balance;margin:0;color:var(--higo)}
+em{font-style:italic}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--oliva)}
+
+/* Cabecera */
+header.top{display:grid;gap:18px;grid-template-columns:1fr auto;align-items:end;border-bottom:1px solid var(--line);padding-bottom:22px}
+header.top h1{font-size:clamp(34px,6vw,56px);line-height:1.02}
+header.top p{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+@media (max-width:720px){header.top{grid-template-columns:1fr}.legend{justify-content:flex-start}}
+
+/* Chips */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;letter-spacing:.02em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.c-reel{background:var(--chip-reel);color:var(--chip-reel-fg)}
+.c-carr{background:var(--chip-carr);color:var(--chip-carr-fg)}
+.c-post{background:var(--chip-post);color:var(--chip-post-fg)}
+.c-st{background:var(--chip-st);color:var(--chip-st-fg)}
+.c-new{background:var(--new-bg);color:var(--new-fg)}
+.c-app{background:var(--app-bg);color:var(--app-fg);box-shadow:inset 0 0 0 1px var(--app-line)}
+.c-app svg{width:11px;height:11px;flex:none}
+.app-bar{display:flex;gap:12px;align-items:flex-start;background:var(--app-bg);color:var(--app-fg);border:1px solid var(--app-line);border-radius:var(--radius);padding:14px 18px;font-size:14px}
+.app-bar svg{width:20px;height:20px;flex:none;margin-top:2px}
+.app-bar p{margin:0;max-width:95ch}
+.note.app{background:var(--app-bg);color:var(--app-fg);border:1px solid var(--app-line)}
+.note.app ul{margin:6px 0 0;padding-left:18px;display:grid;gap:2px}
+:root{--app-bg:#FBF0CC;--app-fg:#5B2333;--app-line:#E3C873}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--app-bg:#3A2F14;--app-fg:#F2DA98;--app-line:#6B5523}}
+:root[data-theme="dark"]{--app-bg:#3A2F14;--app-fg:#F2DA98;--app-line:#6B5523}
+.chan{font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--line);padding:2px 7px;border-radius:999px;white-space:nowrap}
+
+/* Resumen */
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.summary > div{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;display:grid;gap:8px;align-content:start;min-width:0}
+.summary h3{font-size:20px}
+.summary ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.stat{display:flex;align-items:baseline;gap:8px;font-size:14px}
+.stat b{font-family:var(--font-display);font-weight:400;font-size:26px;color:var(--higo);font-variant-numeric:tabular-nums;min-width:1.4ch}
+.summary .warn{background:var(--warn-bg);border-color:transparent;color:var(--warn-fg)}
+.summary .warn h3{color:var(--warn-fg)}
+@media (max-width:900px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.summary{grid-template-columns:1fr}}
+
+/* Calendario */
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{padding:10px 12px;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.grid{gap:1px;background:var(--line)}
+.blank{background:var(--surface-2)}
+.day{all:unset;box-sizing:border-box;background:var(--surface);min-height:132px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;cursor:pointer;position:relative;min-width:0}
+.day:hover{background:var(--surface-2)}
+.day:focus-visible{outline:2px solid var(--higo);outline-offset:-2px}
+.day .num{font-family:var(--font-display);font-size:24px;line-height:1;color:var(--higo);display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.day .num small{font-family:var(--font-body);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;display:none}
+.day .chips{display:flex;flex-wrap:wrap;gap:4px}
+.day .prod{font-size:12.5px;line-height:1.35;color:var(--fg);overflow-wrap:anywhere}
+.day .meta{margin-top:auto;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.day.rest{cursor:default;background:var(--surface-2)}
+.day.rest .prod{color:var(--muted);font-style:italic}
+.day.rest .num{color:var(--muted)}
+.day.past{opacity:.55}
+.day.today{box-shadow:inset 0 0 0 2px var(--oro)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--oliva);display:inline-block}
+@media (max-width:760px){
+  .dow{display:none}
+  .grid{grid-template-columns:1fr}
+  .blank{display:none}
+  .day{min-height:0;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:12px 14px}
+  .day .num{width:100%;font-size:22px}
+  .day .num small{display:inline}
+  .day .meta{margin-top:0}
+  .day.rest{padding-block:8px}
+  .day.rest .num{font-size:17px;width:auto}
+}
+
+/* Notas de diseño y cambios */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;display:grid;gap:10px;align-content:start;min-width:0}
+.panel h2{font-size:24px}
+.panel ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.sw{display:grid;gap:4px;font-size:11.5px;color:var(--muted)}
+.sw span{display:block;width:54px;height:36px;border-radius:6px;border:1px solid var(--line)}
+
+/* Diálogo */
+dialog{border:none;padding:0;border-radius:14px;background:var(--surface);color:var(--fg);width:min(760px,calc(100vw - 32px));max-height:min(88vh,920px);box-shadow:0 30px 80px rgba(20,6,10,.35)}
+dialog::backdrop{background:rgba(28,10,15,.55)}
+.dlg{display:flex;flex-direction:column;max-height:inherit}
+.dlg-head{background:var(--higo);color:var(--on-higo);padding:18px 22px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.dlg-head h2{color:var(--on-higo);font-size:26px;line-height:1.1}
+.dlg-head .eyebrow{color:var(--on-higo);opacity:.8}
+.x{all:unset;cursor:pointer;font-size:26px;line-height:1;padding:2px 8px;border-radius:8px;color:var(--on-higo)}
+.x:focus-visible{outline:2px solid var(--on-higo)}
+.dlg-body{padding:20px 22px 26px;overflow-y:auto;display:grid;gap:18px}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.facts div{background:var(--surface-2);border-radius:8px;padding:10px 12px;min-width:0}
+.facts dt{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.facts dd{margin:3px 0 0;font-size:14px;font-weight:500}
+@media (max-width:560px){.facts{grid-template-columns:1fr}}
+.sec h3{font-size:19px;margin-bottom:6px}
+.sec p,.sec li{font-size:14.5px;max-width:68ch}
+.sec ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.copybox{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;white-space:pre-wrap;font-size:14px;line-height:1.55}
+.copybtn{font:inherit;font-size:12.5px;font-weight:600;background:var(--higo);color:var(--on-higo);border:none;border-radius:999px;padding:6px 12px;cursor:pointer}
+.copybtn:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.sec-head h3{margin:0}
+.note{border-radius:8px;padding:12px 14px;font-size:14px}
+.note.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.note.new{background:var(--new-bg);color:var(--new-fg)}
+.note b{font-weight:700}
+.rest-msg{text-align:center;color:var(--muted);padding:30px 10px}
+.rest-msg h3{color:var(--muted)}
+footer{color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:no-preference){.day{transition:background .15s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Instagram · @confort.ivan · Calendario de contenidos</div>
+      <h1>Octubre <em>2026</em></h1>
+      <p>Planificación mensual de contenidos. Tocá un día para ver la ficha completa: concepto, guion, copy y material.</p>
+    </div>
+    <div class="legend" aria-label="Referencias">
+      <span class="chip c-reel">Reel</span>
+      <span class="chip c-carr">Carrusel</span>
+      <span class="chip c-post">Post</span>
+      <span class="chip c-st">Stories</span>
+      <span class="chip c-app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>Desde la app de IG</span>
+    </div>
+  </header>
+
+  <section class="summary" aria-label="Resumen del mes">
+    <div>
+      <h3>Publicaciones</h3>
+      <div class="stat"><b id="n-reel">0</b> reels</div>
+      <div class="stat"><b id="n-carr">0</b> carruseles</div>
+      <div class="stat"><b id="n-post">0</b> posts</div>
+      <div class="stat"><b id="n-st">0</b> días con stories</div>
+    </div>
+    <div>
+      <h3>Foco del mes</h3>
+      <ul>
+        <li><b>Lanzamiento:</b> mesas redondas y sillas tapizadas de tela (Mercado Libre).</li>
+        <li><b>Objetivos:</b> inspiración, tráfico a web y Mercado Libre, presentar la novedad.</li>
+        <li>3 o 4 días por semana con contenido.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Dónde está cada producto</h3>
+      <ul>
+        <li><b>Web:</b> mesas rectangulares de vidrio y tapa blanca, juegos de comedor, sillas respaldo alto, pana, ecocuero, con costuras.</li>
+        <li><b>Mercado Libre:</b> mesas redondas, sillas Tulip de tela, sillas pata cromada y el resto de las sillas.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Criterios del mes</h3>
+      <ul>
+        <li>Se publica todo producto con stock en al menos un canal; el link va a ese canal.</li>
+        <li>Web: 3 cuotas sin interés y envío gratis en AMBA sin mínimo.</li>
+        <li>Mercado Libre: se nombran solo los beneficios de ese canal.</li>
+        <li>Los copys no llevan precios.</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="app-bar" role="note">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+    <p><b>Publicación desde la app de Instagram.</b> Los días con esta marca tienen stories que se publican de forma manual desde la app de Instagram, porque Metricool no permite compartir un post o reel en stories ni usar stickers interactivos (link, preguntas, encuesta, mención). Por eso esas stories <b>no figuran en Metricool</b>, aunque sí estén publicadas en la cuenta.</p>
+  </div>
+
+  <section class="cal" aria-label="Calendario de octubre 2026">
+    <div class="dow" aria-hidden="true"><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <div class="eyebrow">Guía de redes · Paleta Higo</div>
+      <h2>Cómo diseñar las piezas</h2>
+      <div class="swatches" aria-label="Paleta">
+        <div class="sw"><span style="background:#F1E6DA"></span>Cachemira</div>
+        <div class="sw"><span style="background:#5B2333"></span>Higo</div>
+        <div class="sw"><span style="background:#6E7031"></span>Oliva</div>
+        <div class="sw"><span style="background:#B87A84"></span>Rosa viejo</div>
+        <div class="sw"><span style="background:#EED79A"></span>Jazmín</div>
+        <div class="sw"><span style="background:#C99A2E"></span>Oro</div>
+      </div>
+      <ul>
+        <li><b>Fondos de placa:</b> Cachemira. Para placas comerciales o de cierre, Higo con texto Cachemira.</li>
+        <li><b>Títulos:</b> DM Serif Display en Higo, con una palabra destacada en itálica.</li>
+        <li><b>Texto y datos:</b> DM Sans. Acentos en Oro u Oliva (cuotas, envío, CTA).</li>
+        <li><b>Fotos IA del Drive:</b> antes de usarlas, revisar que no muestren muebles que la marca no vende (por ejemplo, sillas de madera tejida) y recortarlas si hace falta.</li>
+        <li>Diseñar en Canva con el Kit de marca "Confort Ivan".</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>Calendario de Instagram · Confort Ivan · Modus Retis Consulting.</footer>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div>
+        <div class="eyebrow" id="dlg-date"></div>
+        <h2 id="dlg-title"></h2>
+      </div>
+      <button class="x" id="dlg-close" aria-label="Cerrar">×</button>
+    </div>
+    <div class="dlg-body" id="dlg-body"></div>
+  </div>
+</dialog>
+
+<script>
+const ML = "Mercado Libre (Tienda Oficial)";
+const WEB = "Web confortivan.com.ar";
+const R = (d, n) => ({ rest:true, note:n||"Día libre." });
+
+const data = {
+  1:{ rest:true, label:"Sin publicación", note:"Sin publicación." },
+  2:R(),
+  3:{ f:["reel","st"], chan:WEB, product:"Sillas respaldo alto", objective:"Comercial / Producto", cta:"Link en bio",
+      concept:"Mostrar un básico del catálogo en un formato rápido y dinámico: la silla que combina con cualquier mesa.",
+      dev:[
+        "<b>Reel de 7 a 10 segundos:</b> secuencia de fotos de la silla en sus tres colores (negro, gris oscuro y beige), pasando al ritmo de un audio en tendencia.",
+        "Texto en pantalla: \"La silla que nunca falla.\"",
+        "<b>Stories:</b> compartir el reel con el texto \"Un clásico que va con cualquier mesa.\""],
+      copy:"Hay sillas que son un comodín, y la de respaldo alto es una de ellas. 🪑\n\nVa con mesas de vidrio, de madera, redondas o rectangulares, en la cocina o en el comedor. El respaldo acompaña la postura y el tapizado la hace cómoda para las sobremesas largas.\n\nLa encontrás en negro, gris oscuro y beige en confortivan.com.ar (link en bio).\n\n💳 3 cuotas sin interés\n🚚 Envío gratis en AMBA\n\n#SillasDeComedor #ConfortIvan #DecoHogar #Comedor",
+      prod:"Fotos de la publicación de la web o de Mercado Libre. Edición en CapCut sincronizando cada foto con el beat; no hace falta grabar.",
+      warn:"" },
+  4:R(),
+  5:{ f:["st"], chan:"—", product:"Sillas cómodas", objective:"Educación / Producto", cta:"Responder sticker",
+      concept:"Arrancar la semana con la comodidad para el home office o el descanso.",
+      dev:["Story 1: setup de escritorio con una silla de la marca.","Story 2: detalle del tapizado + sticker de pregunta \"¿Qué silla usás para trabajar en casa?\"."],
+      copy:"", prod:"Fotos de la web o de Mercado Libre.",
+      warn:"" },
+  6:R(0,"Día libre. Bajamos la frecuencia de la semana para no saturar."),
+  7:{ f:["carr","st"], chan:"Mercado Libre + Web", product:"Lanzamiento: mesas redondas", objective:"Presentación de la novedad / Tráfico", cta:"Link en bio",
+      concept:"Presentar la novedad del mes: las mesas redondas, con sus dos modelos y por qué son una buena opción para comedores chicos. Prepara el terreno para el reel de mañana.",
+      dev:[
+        "<b>Story 1 (mañana):</b> foto desenfocada de la mesa redonda negra. Texto: \"Hoy sumamos algo nuevo… ¿adivinás qué forma tiene?\" + sticker de encuesta.",
+        "<b>Carrusel de 4 slides:</b>",
+        "Slide 1: mesa redonda negra ambientada. Título: \"Llegaron las mesas <i>redondas</i>.\"",
+        "Slide 2: los dos modelos juntos. \"Dos modelos: madera laqueada negra con pie central y tapa de vidrio de 90 cm.\"",
+        "Slide 3: combo ambientado con sillas. \"Ideales para comedores chicos: todos se ven las caras y no hay esquinas.\"",
+        "Slide 4: placa Higo con texto Cachemira. \"Disponibles en nuestra Tienda Oficial de Mercado Libre · Link en bio\".",
+        "<b>Story 2:</b> compartir el carrusel + sticker de link a Mercado Libre.",
+        "<b>Story 3:</b> placa Cachemira. \"¿Preferís comprar en la web? 3 cuotas sin interés y envío gratis en AMBA, sin mínimo.\" + sticker de link a la web."],
+      copy:"Las estábamos esperando: llegaron las mesas redondas. 🤍\n\nSi tu comedor es chico, o te gusta que las comidas sean más conversadas, la mesa redonda es un camino de ida: todos se ven las caras y no hay esquinas con las que chocarse.\n\nHay dos modelos: madera laqueada negra con pie central y tapa de vidrio de 90 cm.\n\n👉 Encontralas en nuestra Tienda Oficial de Mercado Libre (link en bio).\n\n🚚 Envíos a todo el país\n\n#MesasRedondas #ConfortIvan #ComedorModerno #DecoHogar",
+      prod:"Fotos del lanzamiento en Drive › _generadas-ia › ML-1200 (80132-80-ambientada-a, 80132-80-principal-blanco y los combos). En la foto ambientada, recortar las sillas de madera tejida, que no son de la marca. Antes de publicar, actualizar el link en bio para que lleve a las mesas redondas en Mercado Libre.",
+      warn:"" },
+  8:{ f:["reel","st"], changed:true, chan:ML, product:"Mesas redondas + sillas", objective:"Educación / Novedad", cta:"Comentar el combo preferido",
+      concept:"Mostrar la versatilidad de la mesa redonda con tres combinaciones reales del catálogo.",
+      dev:[
+        "<b>Reel con voz en off</b> (grabada con el celu en un lugar silencioso):",
+        "\"Tenés la mesa redonda y no sabés qué sillas ponerle. Te dejo tres ideas.\" (mesa sola)",
+        "\"Uno: todo negro. Mesa laqueada y sillas tapizadas negras. Moderno y sin vueltas.\" (combo mesa negra + tapizadas negras)",
+        "\"Dos: tapa de vidrio y respaldo alto beige. Liviano, ideal si el comedor es chico.\" (combo mesa de vidrio 90 cm + respaldo alto beige)",
+        "\"Tres: mesa negra con respaldo alto gris. Un clásico que no falla.\" (combo mesa negra + respaldo alto gris)",
+        "\"¿Con cuál te quedás? Contame en comentarios.\"",
+        "<b>Stories:</b> compartir el reel + encuesta \"Combo 1 vs Combo 2\" + sticker de link a Mercado Libre."],
+      copy:"Una mesa redonda, tres estilos distintos. 🪑\n\nLa silla que elijas cambia todo el comedor: total black para un look moderno, respaldo alto para algo más clásico, o la tapa de vidrio para que el ambiente se vea más liviano.\n\nLas mesas redondas están en nuestra Tienda Oficial de Mercado Libre (link en bio).\n\n👇 ¿Con qué combo te quedás? Te leemos.\n\n#MesasRedondas #Comedor #ConfortIvan #DecoHogar",
+      prod:"Ya hay fotos de los combos en Drive › _generadas-ia › ML-1200 (COMBO-80132-80+80020BP-NEG, COMBO-80090-90+80018-BEI, COMBO-80132-80+80018-GRI) y videos cortos de uso en la carpeta \"video\" para el B-roll. Edición y voz en off en CapCut. Placas de título en DM Serif sobre Cachemira.",
+      warn:"" },
+  9:R(), 10:R(0,"Día libre. Fin de semana tranquilo."),
+  11:{ f:["carr"], changed:true, chan:WEB, product:"Juegos de comedor (mesa de vidrio + 4 sillas)", objective:"Comercial", cta:"Ver Juegos de comedor en la web",
+      concept:"Facilitar la compra con el conjunto completo armado.",
+      dev:[
+        "<b>Slide 1:</b> foto de un juego armado. Título: \"Llevalo <i>resuelto</i>.\"",
+        "<b>Slide 2:</b> grilla con 3 juegos: mesa de vidrio con pata ovalada, redonda y cuadrada + 4 sillas. Texto: \"Mesa + 4 sillas, listos para tu comedor.\"",
+        "<b>Slide 3:</b> placa Higo: \"3 cuotas sin interés · Envío gratis en AMBA\" + \"Mirá todos los juegos en confortivan.com.ar\"."],
+      copy:"Elegir pieza por pieza puede ser un lío. Por eso armamos juegos de comedor completos: mesa de vidrio templado + 4 sillas, listos para que los recibas y los disfrutes. 🍽️\n\nHay opciones de 120 y 140 cm, para cocinas chicas o para sumar a toda la familia.\n\nLos encontrás en la sección Juegos de comedor de nuestra web (link en bio).\n\n💳 3 cuotas sin interés\n🚚 Envío gratis en AMBA\n\n#JuegoDeComedor #ConfortIvan #MueblesArgentina #Comedor",
+      prod:"Fotos de la categoría Juegos de comedor de la web (hoy hay 6 juegos con stock).",
+      warn:"" },
+  12:R(0,"Feriado (Día del Respeto a la Diversidad Cultural). El feed descansa."),
+  13:{ f:["reel","st"], changed:true, chan:ML, product:"Sillas Tulip de tela (lanzamiento)", objective:"Inspiración / Producto", cta:"Link en bio",
+      concept:"Mostrar la textura y el diseño de las sillas tapizadas nuevas en un formato estético y tranquilo, post feriado.",
+      dev:[
+        "<b>Reel estético:</b> 3 o 4 fotos con efecto \"Zoom in 3D\" de CapCut: plano general ambientado, detalle de la tela, detalle de las patas y la silla junto a una mesa redonda.",
+        "Música lo-fi o acústica tranquila.",
+        "Texto en pantalla: \"Suave al tacto. Firme para todos los días.\"",
+        "<b>Stories:</b> compartir el reel + sticker de link a Mercado Libre."],
+      copy:"Hay sillas que se ven bien y sillas que además son cómodas. Estas son las dos cosas. 🤍\n\nTapizado en tela suave, respaldo envolvente y patas negras de metal. Un diseño nórdico y simple, que combina con mesas redondas, rectangulares, de vidrio o de madera.\n\nEncontralas en nuestra Tienda Oficial de Mercado Libre (link en bio).\n\n#SillasDeComedor #DiseñoNordico #ConfortIvan #DecoHogar",
+      prod:"Drive › _generadas-ia › ML-1200: 80020B-Gris-ambientada-a/b, 80020BP-Gris-detalle, 80020BP-Negro-ambientada-a. Si hace falta más material, fotos de la publicación de Mercado Libre. Colores: gris y negro.",
+      warn:"" },
+  14:R(),
+  15:{ f:["post","st"], changed:true, chan:ML, product:"Sillas tapizadas con costuras (rojo)", objective:"Inspiración", cta:"Link en bio / encuesta",
+      concept:"Un toque de color en un feed muy neutro: las sillas rojas como protagonistas del comedor.",
+      dev:[
+        "<b>Post:</b> foto ambientada del comedor con las sillas rojas. Sin texto invasivo; solo el logo si hace falta.",
+        "<b>Stories:</b> compartir el post + encuesta \"¿Rojo o negro?\" + sticker de link a Mercado Libre."],
+      copy:"Un comedor neutro y un color que se anima. ❤️\n\nLas sillas tapizadas con costuras tienen respaldo alto, asiento acolchado y patas negras de metal. En rojo son las protagonistas; en negro, un clásico que no falla.\n\nEncontralas en nuestra Tienda Oficial de Mercado Libre (link en bio).\n\n#SillasDeComedor #DecoConColor #ConfortIvan #Comedor",
+      prod:"Foto ambientada de la publicación de Mercado Libre (la de las sillas rojas en el comedor).",
+      warn:"" },
+  16:{ f:["st"], changed:true, chan:"Web + WhatsApp", product:"Envíos y showroom", objective:"Confianza / Comercial", cta:"Escribir por WhatsApp",
+      concept:"Preguntas frecuentes sobre envíos, útil antes del fin de semana.",
+      dev:[
+        "<b>Story 1:</b> placa Cachemira. Título: \"¿Hacen envíos al <i>interior</i>?\"",
+        "<b>Story 2:</b> \"Sí, enviamos a todo el país. Y en AMBA el envío es gratis, sin mínimo de compra.\"",
+        "<b>Story 3:</b> \"¿Preferís verlas en persona? Showroom en Av. Sáenz 701, CABA.\" + sticker de link a WhatsApp."],
+      copy:"", prod:"Placas en Canva con el Kit de marca.",
+      warn:"" },
+  17:R(),
+  18:{ f:["st"], changed:true, chan:"—", product:"Día de la Madre", objective:"Vínculo / Interacción", cta:"Etiquetar a mamá",
+      concept:"Saludar a todas las mamás en su día con un mensaje cálido, sin tono de venta: la mesa como el lugar donde nos reúnen.",
+      dev:[
+        "<b>Story 1:</b> placa Rosa viejo con texto Cachemira. Título en DM Serif: \"Feliz día, <i>mamá</i>.\"",
+        "<b>Story 2:</b> foto ambientada de un comedor con la mesa puesta. Texto: \"A las que siempre nos juntan alrededor de la mesa: gracias. Hoy el lugar de honor es de ustedes. 🤍\"",
+        "<b>Story 3:</b> placa Cachemira. \"Etiquetá a tu mamá y mandale un abrazo.\" + sticker de mención o de \"Agregar el tuyo\" con \"Una foto con mamá\"."],
+      copy:"", prod:"Placas en Canva con el Kit de marca. Foto ambientada de la web o de Mercado Libre (comedor con mesa puesta). Sin precios ni promociones.",
+      warn:"" },
+  19:{ f:["st"], changed:true, chan:"Según la respuesta", product:"Respuestas a la caja de preguntas", objective:"Educación / Atención al cliente", cta:"Link según la respuesta",
+      concept:"Responder las preguntas de ayer, con foto del producto de fondo en cada respuesta.",
+      dev:[
+        "<b>Stories 1 a 3:</b> una pregunta por story, con la foto del producto mencionado y un link al canal donde se compra.",
+        "Si llegan pocas preguntas, completar con dudas reales que llegaron por mensaje directo o en las preguntas de Mercado Libre (por ejemplo, medidas de la mesa redonda, cuánto tarda el envío, cómo se limpia el ecocuero)."],
+      copy:"", prod:"Respuestas nativas en Instagram.",
+      warn:"" },
+  20:{ f:["reel","st"], changed:true, chan:ML, product:"Sillas modernas pata cromada (ecocuero)", objective:"Entretenimiento / Producto", cta:"Link en bio",
+      concept:"Reel en formato POV, con la calificación de clientes reales como prueba social.",
+      dev:[
+        "<b>Reel POV:</b> paneo lento o zoom sobre fotos de las sillas, cerrando con un detalle de las patas cromadas.",
+        "Texto en pantalla: \"POV: encontraste sillas que combinan con cualquier mesa y se limpian con un trapo húmedo.\"",
+        "Audio: canción pop o indie optimista en tendencia.",
+        "<b>Stories:</b> compartir el reel + \"4,6 ⭐ de los que ya las tienen\" + sticker de link a Mercado Libre."],
+      copy:"Ecocuero y patas cromadas: la combinación más práctica para el comedor de todos los días. ✨\n\nEl respaldo alto acompaña la postura, el ecocuero se limpia fácil y el cromado le da ese brillo que levanta cualquier ambiente.\n\nY no lo decimos solo nosotros: tienen 4,6 ⭐ de calificación en Mercado Libre.\n\nEncontralas en nuestra Tienda Oficial (link en bio).\n\n#SillasDeComedor #Ecocuero #ConfortIvan #DecoComedor",
+      prod:"Fotos de la publicación de Mercado Libre. El formato POV es texto sobre imagen; no hace falta grabar. Colores: negro y beige.",
+      warn:"" },
+  21:R(),
+  22:{ f:["carr"], changed:true, chan:"Mercado Libre + Web", product:"Mesas: redonda vs. rectangular", objective:"Educación / Comparación", cta:"Guardar el post",
+      concept:"Carrusel informativo para ayudar a decidir qué forma de mesa conviene según el espacio.",
+      dev:[
+        "<b>Slide 1:</b> placa Cachemira. Título: \"¿Redonda o <i>rectangular</i>?\"",
+        "<b>Slide 2:</b> mesa redonda (foto con medidas). \"Redonda: ideal para comedores chicos o cuadrados. Todos se ven las caras y no hay esquinas para golpearse.\"",
+        "<b>Slide 3:</b> mesa rectangular de vidrio. \"Rectangular: perfecta para comedores alargados. Entran más personas.\"",
+        "<b>Slide 4:</b> \"La regla de oro: dejá al menos 90 cm libres alrededor de la mesa para correr las sillas.\" + \"Redondas en Mercado Libre · Rectangulares en confortivan.com.ar\"."],
+      copy:"Elegir mesa es una decisión importante: ahí pasa gran parte de la vida de la casa. 🏡\n\nSi estás entre redonda y rectangular, deslizá: te dejamos una guía rápida para decidir según tu espacio.\n\nGuardalo para cuando tengas que medir. 📏\n\n🔹 Mesas redondas: Tienda Oficial de Mercado Libre\n🔹 Mesas rectangulares: confortivan.com.ar\n\n#TipsDeco #MesaRedonda #Comedor #ConfortIvan",
+      prod:"Para la redonda hay fotos con medidas (\"cotas\") en Drive › _generadas-ia › ML-1200. Para la rectangular, fotos de la web.",
+      warn:"" },
+  23:R(),
+  24:{ f:["post"], changed:true, chan:WEB, product:"Mesa de vidrio templado pata ovalada negra", objective:"Producto / Inspiración", cta:"Link en bio",
+      concept:"Único post del fin de semana: la mesa de vidrio como solución para comedores chicos.",
+      dev:["<b>Post:</b> foto ambientada de la mesa, con buena luz. Diseño simple; como mucho, un título corto en DM Serif."],
+      copy:"¿Comedor chico? El vidrio es tu aliado. ✨\n\nLa tapa de vidrio templado deja pasar la luz y hace que el ambiente se vea más amplio. Con pata ovalada negra de hierro, suma un toque moderno sin recargar.\n\nMedidas: 120 x 80 cm o 140 x 80 cm, 75 cm de alto.\n\nEncontrala en confortivan.com.ar (link en bio).\n\n💳 3 cuotas sin interés\n🚚 Envío gratis en AMBA\n\n#MesaDeVidrio #ComedorChico #ConfortIvan #DecoHogar",
+      prod:"Foto de la publicación de la web (o de Mercado Libre, si es mejor).",
+      warn:"" },
+  25:R(0,"Día libre."),
+  26:{ f:["st"], chan:WEB, product:"Sillas de oficina", objective:"Producto / Tráfico web", cta:"Sticker de link",
+      concept:"Arrancar la última semana del mes con la categoría que todavía no apareció: sillas de oficina para el home office.",
+      dev:[
+        "<b>Story 1:</b> foto de la silla de respaldo alto en un escritorio. Título en DM Serif: \"Lunes de <i>home office</i>.\"",
+        "<b>Story 2:</b> \"Altura regulable, ruedas y apoyabrazos. En respaldo alto o medio.\" + sticker de link a la categoría Oficina de la web.",
+        "<b>Story 3:</b> encuesta \"¿Respaldo alto o medio?\""],
+      copy:"", prod:"Fotos de la categoría Oficina de la web (placas en Canva con el Kit de marca).",
+      warn:"" },
+  27:{ f:["reel","st"], changed:true, chan:"Web + Mercado Libre", product:"Sillas (todos los modelos reales)", objective:"Comercial / Cierre de mes", cta:"Link en bio",
+      concept:"Reel tipo catálogo rápido: una misma mesa y las sillas que van apareciendo y desapareciendo.",
+      dev:[
+        "<b>Reel:</b> una foto de fondo de un comedor con la mesa sola. Sobre ella aparecen, al ritmo del beat, las sillas recortadas: Tulip patas de madera, Tulip patas negras, respaldo alto, pata cromada, con costuras en rojo y pana gris.",
+        "Texto en pantalla: \"Una mesa, seis estilos de silla.\"",
+        "<b>Stories:</b> \"¿Cuál va con tu comedor?\" + compartir el reel."],
+      copy:"¿Qué estilo tiene tu casa? Seguro tenemos una silla que le hace juego. 🪑\n\nNórdicas, de respaldo alto, en ecocuero, en pana o con un toque de color. Elegí la tuya y renová el comedor.\n\nEncontrá todos los modelos en nuestra web y en nuestra Tienda Oficial de Mercado Libre (link en bio).\n\n🚚 Envíos a todo el país\n\n#SillasDeComedor #ConfortIvan #MueblesArgentina #DecoInterior",
+      prod:"CapCut: recortar el fondo de cada silla (fotos de la web y de Mercado Libre) y usar capas sincronizadas con el beat. No hace falta grabar.",
+      warn:"" },
+  28:R(), 29:R(),
+  30:{ f:["st"], changed:true, chan:WEB, product:"General", objective:"Comercial / Urgencia", cta:"Comprar ahora",
+      concept:"Últimos días del mes para aprovechar las cuotas.",
+      dev:["<b>Story:</b> placa Higo con texto Cachemira. Título: \"Se termina <i>octubre</i>.\" Texto: \"Aprovechá las 3 cuotas sin interés para renovar tu comedor este finde.\" + sticker de link a la web."],
+      copy:"", prod:"Placa gráfica en Canva.",
+      warn:"" },
+  31:R(0,"Fin de mes libre.")
+};
+
+// Stories que se publican a mano desde la app de Instagram (no figuran en Metricool)
+const APP = {
+  3:["Compartir el reel en stories"],
+  5:["Sticker de preguntas"],
+  7:["Sticker de encuesta (story 1)","Compartir el carrusel en stories","Stickers de link a Mercado Libre y a la web"],
+  8:["Compartir el reel en stories","Sticker de encuesta","Sticker de link a Mercado Libre"],
+  13:["Compartir el reel en stories","Sticker de link a Mercado Libre"],
+  15:["Compartir el post en stories","Sticker de encuesta","Sticker de link a Mercado Libre"],
+  16:["Sticker de link a WhatsApp"],
+  18:["Sticker de mención o «Agregar el tuyo»"],
+  19:["Responder la caja de preguntas","Stickers de link"],
+  20:["Compartir el reel en stories","Sticker de link a Mercado Libre"],
+  26:["Sticker de link a la web","Sticker de encuesta"],
+  27:["Compartir el reel en stories"],
+  30:["Sticker de link a la web"]
+};
+const PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>';
+
+const FMT = { reel:["Reel","c-reel"], carr:["Carrusel","c-carr"], post:["Post","c-post"], st:["Stories","c-st"] };
+const DOW = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const OFFSET = 3; // 1/10/2026 es jueves
+const grid = document.getElementById("grid");
+
+const now = new Date();
+const isOct26 = now.getFullYear()===2026 && now.getMonth()===9;
+const today = isOct26 ? now.getDate() : (now > new Date(2026,9,31) ? 32 : 0);
+
+for(let i=0;i<OFFSET;i++){ const b=document.createElement("div"); b.className="blank"; grid.appendChild(b); }
+
+const counts={reel:0,carr:0,post:0,st:0};
+for(let d=1; d<=31; d++){
+  const it=data[d]; const dow=DOW[(d+OFFSET-1)%7];
+  const btn=document.createElement("button");
+  btn.type="button"; btn.className="day";
+  if(d<today) btn.classList.add("past");
+  if(d===today) btn.classList.add("today");
+  if(it.rest){
+    btn.classList.add("rest"); btn.tabIndex=-1;
+    btn.innerHTML=`<div class="num">${d}<small>${dow}</small></div><div class="prod">${it.label || (d===12?"Feriado":"Descanso")}</div>`;
+  } else {
+    it.f.forEach(k=>counts[k]++);
+    const chips=it.f.map(k=>`<span class="chip ${FMT[k][1]}">${FMT[k][0]}</span>`).join("");
+    btn.innerHTML=`<div class="num">${d}<small>${dow}</small></div>
+      <div class="chips">${chips}</div>
+      <div class="prod">${it.product}</div>
+      <div class="meta">${it.chan && it.chan!=="—" ? `<span class="chan">${shortChan(it.chan)}</span>`:""}${APP[d] ? `<span class="chip c-app" title="Stories publicadas desde la app de Instagram">${PHONE}App IG</span>`:""}</div>`;
+    btn.setAttribute("aria-label",`${dow} ${d}: ${it.f.map(k=>FMT[k][0]).join(" y ")}, ${it.product}${APP[d] ? ". Stories desde la app de Instagram" : ""}`);
+    btn.addEventListener("click",()=>openDay(d));
+  }
+  grid.appendChild(btn);
+}
+const rem=(OFFSET+31)%7; if(rem) for(let i=0;i<7-rem;i++){ const b=document.createElement("div"); b.className="blank"; grid.appendChild(b); }
+
+document.getElementById("n-reel").textContent=counts.reel;
+document.getElementById("n-carr").textContent=counts.carr;
+document.getElementById("n-post").textContent=counts.post;
+document.getElementById("n-st").textContent=counts.st;
+
+function shortChan(c){
+  if(c===ML) return "Mercado Libre";
+  if(c===WEB) return "Web";
+  return c;
+}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+const dlg=document.getElementById("dlg");
+function openDay(d){
+  const it=data[d]; const dow=DOW[(d+OFFSET-1)%7];
+  document.getElementById("dlg-date").textContent=`${dow} ${d} de octubre`;
+  document.getElementById("dlg-title").textContent=`${it.f.map(k=>FMT[k][0]).join(" + ")} · ${it.product}`;
+  let h=`<dl class="facts">
+    <div><dt>Objetivo</dt><dd>${it.objective}</dd></div>
+    <div><dt>Link a</dt><dd>${it.chan}</dd></div>
+    <div><dt>CTA</dt><dd>${it.cta}</dd></div></dl>`;
+  if(APP[d]) h+=`<div class="note app"><b>📱 Stories desde la app de Instagram.</b> Se publican a mano porque Metricool no lo permite, así que no van a figurar en Metricool:<ul>${APP[d].map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+  h+=`<div class="sec"><h3>Concepto</h3><p>${it.concept}</p></div>`;
+  h+=`<div class="sec"><h3>Desarrollo y guion</h3><ul>${it.dev.map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+  if(it.copy){
+    h+=`<div class="sec"><div class="sec-head"><h3>Copy para el feed</h3><button class="copybtn" id="copybtn" type="button">Copiar copy</button></div><div class="copybox" id="copytext">${esc(it.copy)}</div></div>`;
+  }
+  h+=`<div class="sec"><h3>Producción y material</h3><p>${it.prod}</p></div>`;
+  if(it.warn) h+=`<div class="note ${d<=6?'new':'warn'}">${it.warn}</div>`;
+  document.getElementById("dlg-body").innerHTML=h;
+  const cb=document.getElementById("copybtn");
+  if(cb) cb.addEventListener("click",()=>copyText(cb));
+  dlg.showModal();
+  document.getElementById("dlg-body").scrollTop=0;
+}
+function copyText(btn){
+  const el=document.getElementById("copytext"); const text=el.innerText;
+  const done=()=>{btn.textContent="Copiado"; setTimeout(()=>btn.textContent="Copiar copy",1800);};
+  const fallback=()=>{const r=document.createRange(); r.selectNodeContents(el); const s=getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent="Texto seleccionado";};
+  try{ navigator.clipboard.writeText(text).then(done,fallback); }catch(e){ fallback(); }
+}
+document.getElementById("dlg-close").addEventListener("click",()=>dlg.close());
+dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+</script>
+
+</body></html>

@@ -1,0 +1,606 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Ultragrif LinkedIn Octubre 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: cabecera clara + resumen en 4 tarjetas + grilla mensual Lun–Dom + ficha del día en un diálogo + paneles de trabajo. Tema claro fijo, una sola familia tipográfica con jerarquía por tamaño y peso. */
+:root{
+  --bg:#FAFAFB; --surface:#FFFFFF; --soft:#F4F5F7; --ink:#1A1D21; --text:#3B4148; --muted:#7A818A; --line:#E6E8EB;
+  --accent:#1B6A98; --accent-soft:#EAF3F9;
+  --p1:#2F6FB3; --p2:#B7791F; --p3:#1F8A7A; --p4:#7656B8; --p5:#C2475E;
+  --warn:#8A5200; --warn-bg:#FFF6E5; --warn-line:#F3DDB0;
+  --ok:#2F7D4A; --ok-bg:#EAF6EE;
+  --client:#A33A2B; --client-bg:#FCEEEC;
+  --font:"Manrope","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.55;margin:0;font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--font);color:var(--ink);text-wrap:balance;margin:0;letter-spacing:-.015em}
+b,strong{color:var(--ink)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:16px}
+.mono{font-family:var(--font)}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+/* Cabecera */
+.band{background:var(--surface);border-bottom:1px solid var(--line)}
+.band .wrap{padding-block:30px 26px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end}
+.band h1{font-size:clamp(30px,4.6vw,44px);font-weight:800;line-height:1.08;margin-top:6px}
+.band h1 span{display:block;font-size:.45em;font-weight:600;color:var(--accent);letter-spacing:0;margin-top:6px}
+.band p{margin:10px 0 0;color:var(--muted);max-width:62ch}
+.legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:380px}
+@media (max-width:760px){.band .wrap{grid-template-columns:1fr}.legend{justify-content:flex-start;max-width:none}}
+
+main .wrap{padding-block:28px 64px;display:grid;gap:28px}
+
+/* Chips */
+.pchip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--pc)}
+.flag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.f-warn{background:var(--warn-bg);color:var(--warn)}
+.f-client{background:var(--client-bg);color:var(--client)}
+.f-ok{background:var(--ok-bg);color:var(--ok)}
+.f-li{background:#E8F1FB;color:#0A66C2;border:1px solid #BFD6F2;white-space:normal;line-height:1.3}
+.li-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:#0A66C2;color:#fff;font-size:10px;font-weight:800;margin-right:4px;vertical-align:-3px}
+.calnote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 18px 14px;font-size:13px;color:var(--muted)}
+.box.li{background:#E8F1FB;border:1px solid #BFD6F2;color:var(--ink)}
+
+/* Resumen */
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:10px;align-content:start;min-width:0}
+.card h3{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.card ul{margin:0;padding-left:18px;display:grid;gap:5px;font-size:14px}
+.stat{display:flex;align-items:baseline;gap:8px;font-size:14px}
+.stat b{font-size:26px;font-weight:800;min-width:1.4ch;line-height:1.1}
+.weeklist{display:grid;gap:8px}
+.weeklist button{all:unset;cursor:pointer;display:grid;gap:1px;font-size:14px}
+.weeklist button .t{font-weight:600;color:var(--ink)}
+.weeklist button:hover .t{text-decoration:underline}
+.weeklist button:focus-visible{outline:2px solid var(--accent)}
+.weeklist .d{font-size:12px;font-weight:600;color:var(--pc)}
+.card.urgent{background:var(--warn-bg);border-color:var(--warn-line)}
+.card.urgent h3{color:var(--warn)}
+.card.urgent li{color:var(--ink)}
+@media (max-width:980px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:540px){.summary{grid-template-columns:1fr}}
+
+/* Calendario */
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.calhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;padding:18px 18px 14px}
+.calhead h2{font-size:24px;font-weight:800}
+.calhead span{font-size:13.5px;color:var(--muted)}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{padding:10px 12px;font-size:12px;font-weight:700;color:var(--muted);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.grid{gap:1px;background:var(--line)}
+.blank{background:var(--soft)}
+.day{background:var(--surface);min-height:156px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.day .num{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.day .num b{font-size:20px;font-weight:800;line-height:1}
+.day .num small{font-size:12px;color:var(--muted);font-weight:500}
+.day.empty{background:var(--soft)}
+.day.empty .num b{color:#B3B8BF;font-weight:600}
+.day.empty .none{display:none}
+button.day{all:unset;box-sizing:border-box;background:var(--surface);min-height:156px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0;cursor:pointer;box-shadow:inset 0 3px 0 var(--pc)}
+button.day:hover{background:color-mix(in srgb,var(--pc) 6%,var(--surface))}
+button.day:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+button.day .pill{align-self:flex-start;font-size:12px;font-weight:700;color:var(--pc);display:flex;align-items:center;gap:6px;margin-top:4px}
+button.day .topic{font-weight:700;font-size:14px;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+button.day .fmt{font-size:12.5px;color:var(--muted)}
+button.day .flags{margin-top:auto;display:flex;flex-wrap:wrap;gap:4px;padding-top:4px}
+.day.past{opacity:.5}
+.day.today{box-shadow:inset 0 3px 0 var(--pc),inset 0 0 0 2px var(--accent)}
+.day.today .num small{color:var(--accent);font-weight:700}
+.tapnote{display:none}
+
+@media (max-width:640px){
+  .dow div{padding:8px 2px;text-align:center;font-size:11px}
+  .day,button.day{min-height:76px;padding:8px 4px;gap:3px;align-items:center;text-align:center}
+  .day .num{flex-direction:column;align-items:center;gap:0}
+  .day .num b{font-size:17px}
+  .day .num small,button.day .topic,button.day .fmt,button.day .pill span{display:none}
+  button.day .pill{align-self:center;margin-top:2px}
+  button.day .pill .dot{width:10px;height:10px}
+  button.day .tm{font-size:10.5px;font-weight:700;color:var(--pc)}
+  button.day .flags{justify-content:center;margin-top:0;padding-top:0}
+  button.day .flag{font-size:0;padding:0;width:7px;height:7px;border-radius:50%}
+  button.day .flag.f-warn{background:var(--warn)}
+  button.day .flag.f-client{background:var(--client)}
+  button.day .flag.f-ok{display:none}
+  button.day .flag.f-li{background:#0A66C2;border:0;width:9px;height:9px}
+  .tapnote{display:block;font-size:13px;color:var(--muted);padding:12px 14px;border-top:1px solid var(--line)}
+}
+@media (min-width:641px){button.day .tm{display:none}}
+
+/* Paneles */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px;display:grid;gap:10px;align-content:start;min-width:0}
+.panel h2{font-size:22px;font-weight:800}
+.panel p{margin:0;max-width:72ch}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;font-weight:700;color:var(--muted)}
+.scroll{overflow-x:auto}
+.due{font-size:13px;font-weight:700;color:var(--client);white-space:nowrap}
+.steps{display:grid;margin:0;padding:0;list-style:none}
+#h-img ~ .steps{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));column-gap:24px}
+#h-img ~ .steps li{border-bottom:0}
+.steps li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.steps li:last-child{border-bottom:0}
+.steps .i{font-size:12.5px;font-weight:700;color:#B3B8BF;padding-top:2px}
+.steps b{display:block;margin-bottom:1px}
+.mixbar{display:grid;gap:10px}
+.mix{display:grid;grid-template-columns:160px minmax(0,1fr) 100px;gap:10px;align-items:center;font-size:13.5px;color:var(--ink)}
+.track{position:relative;height:10px;background:var(--soft);border-radius:5px}
+.track .fill{position:absolute;inset:0 auto 0 0;border-radius:5px;background:var(--pc)}
+.track .tgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.mix .v{font-size:12.5px;color:var(--muted);text-align:right}
+@media (max-width:540px){.mix{grid-template-columns:105px minmax(0,1fr) 88px}}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin-top:3px}
+footer{color:var(--muted);font-size:13px}
+
+/* Diálogo */
+dialog{border:none;padding:0;border-radius:14px;background:var(--surface);color:var(--text);width:min(780px,calc(100vw - 24px));max-height:min(90vh,960px);box-shadow:0 24px 70px rgba(20,24,30,.22)}
+dialog::backdrop{background:rgba(20,24,30,.35)}
+.dlg{display:flex;flex-direction:column;max-height:inherit}
+.dlg-head{background:var(--surface);padding:20px 22px 16px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:6px solid var(--pc);border-bottom:1px solid var(--line)}
+.dlg-head .eyebrow{color:var(--pc)}
+.dlg-head h2{font-size:24px;font-weight:800;line-height:1.2;margin-top:4px}
+.x{all:unset;cursor:pointer;font-size:26px;line-height:1;padding:2px 8px;border-radius:6px;color:var(--muted)}
+.x:hover{background:var(--soft)}
+.x:focus-visible{outline:2px solid var(--accent)}
+.dlg-body{padding:18px 22px 26px;overflow-y:auto;display:grid;gap:20px}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.facts div{background:var(--soft);border-radius:8px;padding:10px 12px;min-width:0}
+.facts dt{font-size:11.5px;font-weight:600;color:var(--muted)}
+.facts dd{margin:2px 0 0;font-size:14px;font-weight:700;color:var(--ink)}
+@media (max-width:560px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sec h3{font-size:16px;font-weight:800;margin-bottom:8px}
+.sec p{margin:0;font-size:14.5px;max-width:68ch}
+.sec ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14.5px}
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.sec-head h3{margin:0}
+.box{border-radius:8px;padding:12px 14px;font-size:14.5px}
+.box.mat{background:var(--accent-soft);color:var(--ink)}
+.box.warn{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--ink)}
+.box.plain{border:1px solid var(--line)}
+.li-preview{border:1px solid var(--line);border-radius:10px;padding:16px}
+.li-head{display:flex;gap:10px;align-items:center;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.li-logo{width:40px;height:40px;border-radius:6px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px;flex:none}
+.li-head b{display:block;font-size:14px}
+.li-head small{color:var(--muted);font-size:12px}
+.copytext{white-space:pre-wrap;font-size:14.5px;line-height:1.6;margin:0;color:var(--ink)}
+.tags{color:var(--accent);font-weight:700;font-size:14px;margin-top:12px}
+.copybtn{font-size:12.5px;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:999px;padding:6px 13px;cursor:pointer}
+.changed ul{color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){button.day{transition:background .15s}}
+</style>
+
+
+<header class="band">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">LinkedIn · Griferías Ultragrif S.A.</div>
+      <h1>Octubre 2026<span>Mes 3 · Autoridad</span></h1>
+      <p>Tocá un día del calendario para ver la ficha completa de la publicación: temática, copy, estilo de imagen y material.</p>
+    </div>
+    <div class="legend" id="legend" aria-label="Pilares de contenido"></div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section class="summary" aria-label="Resumen del mes">
+      <div class="card">
+        <h3>Publicaciones</h3>
+        <div class="stat"><b>13</b> en el mes</div>
+        <div class="stat"><b>3</b> por semana (mar, mié, jue)</div>
+                <div class="stat"><b>5</b> pilares de contenido</div>
+      </div>
+      <div class="card">
+        <h3>Esta semana</h3>
+        <div class="weeklist" id="weeklist"></div>
+      </div>
+      <div class="card">
+        <h3>Foco del mes</h3>
+        <ul>
+          <li><b>Hito:</b> Día Mundial de la Arquitectura (lunes 5/10).</li>
+          <li><b>Concepto:</b> costo total de propiedad y respaldo postventa.</li>
+          <li><b>KPI:</b> consultas de anteproyecto por mensaje directo.</li>
+          <li>Martes, miércoles y jueves, 08:30–10:00 o 12:30–13:30 hs.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Formatos</h3>
+        <ul id="formats"></ul>
+      </div>
+    </section>
+
+    <section class="cal" aria-label="Calendario de octubre 2026">
+      <div class="calhead"><h2>Calendario</h2><span>Mar · Mié · Jue · Los demás días no se publica</span></div>
+      <div class="calnote"><span class="flag f-li"><span class="li-badge">in</span>Desde LinkedIn</span> Se publica directo desde la app de LinkedIn, no desde Metricool. Ese día no figura en Metricool: se ve en la página de LinkedIn de Griferías Ultragrif S.A.</div>
+      <div class="dow" aria-hidden="true"><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div></div>
+      <div class="grid" id="grid"></div>
+      <div class="tapnote">Tocá un día con color para ver la publicación completa.</div>
+    </section>
+
+    
+
+    <div class="two">
+      <section class="panel" aria-labelledby="h-mix">
+        <div class="eyebrow">Estrategia B2B</div>
+        <h2 id="h-mix">Mezcla de pilares</h2>
+        <p style="font-size:13.5px;color:var(--muted)">Barra: publicaciones del mes. Línea: porcentaje objetivo de la estrategia.</p>
+        <div class="mixbar" id="mix"></div>
+      </section>
+      <section class="panel" aria-labelledby="h-act">
+        <div class="eyebrow">Mes 3</div>
+        <h2 id="h-act">Acciones que acompañan</h2>
+        <ul class="steps" id="actions"></ul>
+      </section>
+    </div>
+
+    <div>
+      <section class="panel" aria-labelledby="h-img">
+        <div class="eyebrow">Guía de piezas</div>
+        <h2 id="h-img">Criterios de imagen</h2>
+        <ul class="steps">
+          <li><span class="i">A</span><div><b>Producto e inspiración</b>Fotos del catálogo web y ambientaciones en Canva con IA. Si la escena es generada, sumar "Imagen ilustrativa" en chico.</div></li>
+          <li><span class="i">B</span><div><b>Obras, planta y equipo</b>Solo con fotografías reales. Las ambientaciones se usan para producto, nunca para mostrar obras o instalaciones.</div></li>
+          <li><span class="i">C</span><div><b>Eventos</b>Drive › "Fotos eventos ULTRAGRIF mar 26": fotos y video (ULTRAGRIF.mp4) del evento de marzo 2026.</div></li>
+          <li><span class="i">D</span><div><b>Formato LinkedIn</b>Imagen 1:1 o 4:5. Carruseles como PDF. Video 1:1 o 4:5 con subtítulos. Link siempre en el primer comentario.</div></li>
+        </ul>
+      </section>
+      
+    </div>
+
+    <footer>Calendario de LinkedIn · Griferías Ultragrif S.A. · Modus Retis Consulting · Revisado el 19/10/2026.</footer>
+  </div>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <div class="dlg">
+    <div class="dlg-head" id="dlg-head">
+      <div><div class="eyebrow" id="dlg-date"></div><h2 id="dlg-title"></h2></div>
+      <button class="x" id="dlg-close" aria-label="Cerrar">×</button>
+    </div>
+    <div class="dlg-body" id="dlg-body"></div>
+  </div>
+</dialog>
+
+<script>
+const PILLARS = {
+  p1:{name:"ADN Ultra", target:25},
+  p2:{name:"Soluciones para Obras", target:30},
+  p3:{name:"Industria Nacional", target:20},
+  p4:{name:"Tendencias e Industria", target:15},
+  p5:{name:"Cultura y Comunidad", target:10}
+};
+const SRC = {
+  cat:"Fotos del catálogo web",
+  canva:"Diseño en Canva",
+  ia:"Ambientación con IA (ilustrativa)",
+  drive:"Drive · Fotos eventos mar 26",
+  ig:"Reel existente de Instagram",
+  cli:"Material propio de la marca"
+};
+const LINK = "https://ultragrif.com.ar";
+
+const posts = [
+{
+  date:"2026-10-01", time:"08:30", pillar:"p2", format:"Carrusel PDF (4 placas)",
+  persona:"Constructoras y desarrolladores", objective:"Autoridad y leads",
+  topic:"Agilidad PyME vs. burocracia",
+  src:["canva","cat"], ready:true,
+  creative:"Portada: 'Los 3 cuellos de botella que retrasan tu obra en la etapa de terminaciones'. Placas: 1) Demoras en la entrega de terminaciones. 2) Sin un interlocutor ante imprevistos. 3) Repuestos que no llegan. 4) Cómo lo resuelve el Departamento de Obras + llamado a la acción.",
+  copy:"En el desarrollo inmobiliario, el tiempo es rentabilidad directa.\n\nUna de las quejas más frecuentes que escuchamos de los directores de obra es la demora en la entrega de materiales de terminación o la falta de respuestas rápidas ante imprevistos.\n\nComo PyME nacional, en Ultragrif convertimos la agilidad en una ventaja para tu obra:\n\n✔️ Contacto directo y sin burocracia con nuestro Departamento de Obras.\n✔️ Respuestas y presupuestos ágiles, sin intermediarios.\n✔️ Producción local que asegura provisión constante.\n\nDeslizá el carrusel para ver los 3 cuellos de botella más comunes y cómo los resolvemos. 👉\n\n¿Estás planificando las terminaciones de tu próximo proyecto? Hablemos de tiempos reales y soluciones concretas.",
+  hashtags:"#DesarrolloInmobiliario #ConstruccionArgentina #Arquitectura #Ultragrif",
+  comment:"Conocé cómo trabaja nuestro Departamento de Obras y pedí una reunión de asesoramiento: "+LINK,
+  tips:"Etiquetar en los comentarios a 2 o 3 constructores o arquitectos con los que la marca ya tenga buena relación.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-06", time:"12:30", pillar:"p5", format:"Imagen única",
+  persona:"Arquitectos y especificadores", objective:"Engagement y relaciones",
+  topic:"Día Mundial de la Arquitectura",
+  src:["cat","canva","ia"], ready:true,
+  creative:"Pieza de homenaje en Canva: grifería Black Chrome o Volga del catálogo en un baño ambientado con IA, con poco texto: 'Gracias a quienes diseñan lo que construimos'. Sumar 'Imagen ilustrativa' en chico.",
+  copy:"Ayer fue el Día Mundial de la Arquitectura y hoy queremos dedicarle este espacio a quienes hacen posible cada proyecto.\n\nDetrás de cada desarrollo hay un profesional que tomó cientos de decisiones invisibles para lograr el equilibrio entre estética, funcionalidad y presupuesto.\n\nEn Ultragrif sabemos que la grifería es el toque final de una visión mucho más grande. Por eso trabajamos para que elegirla sea una decisión simple: diseño de vanguardia, respaldo técnico y un Departamento de Obras que acompaña cada etapa.\n\nGracias a los arquitectos y arquitectas que siguen apostando por el buen diseño y elevan el estándar de la construcción en Argentina.\n\n¿A qué colega le dedicarías un reconocimiento hoy? Etiquetalo en los comentarios. 👇",
+  hashtags:"#DiaMundialDeLaArquitectura #ArquitecturaArgentina #Ultragrif #ADNUltra",
+  comment:"Conocé las líneas que acompañan a la arquitectura argentina en nuestro catálogo: "+LINK,
+  tips:"Día clave de interacción. Responder todos los comentarios etiquetando a los arquitectos. Desde la página, comentar publicaciones de estudios de arquitectura que celebren el día.",
+  verify:[],
+  planB:"Si no llegás con la ambientación, una placa tipográfica sobre fondo grafito con la foto de producto recortada funciona igual de bien para esta fecha.",
+  changed:[]
+},
+{
+  date:"2026-10-07", time:"09:00", pillar:"p4", format:"Infografía técnica",
+  persona:"Arquitectos y distribuidores", objective:"Educación técnica",
+  topic:"Aireadores espumosos y ahorro de agua",
+  src:["cat","canva"], ready:true,
+  creative:"Infografía sobria: foto del pico de una grifería del catálogo con un esquema que muestre cómo el aireador mezcla aire con agua. Tres íconos con los beneficios, sin cifras.",
+  copy:"El lujo también es eficiencia. 💧\n\nUno de los requisitos más pedidos en los pliegos de obra actuales es la gestión eficiente del consumo de agua. Pero, ¿cómo ahorrar agua sin que el usuario pierda la sensación de confort y presión en la bacha?\n\nLa respuesta está en el aireador, una pieza chica que hace una gran diferencia.\n\nEsta pieza mezcla el caudal de agua con aire y logra:\n📉 Menos litros por minuto, sin perder confort.\n🫧 Un chorro suave, voluminoso y sin salpicaduras.\n🏗️ Aportar a los objetivos de eficiencia hídrica de proyectos sustentables.\n\nEn Ultragrif, el diseño exterior es vanguardia y el diseño interior es ingeniería al servicio del recurso más vital.\n\n¿Evaluás el consumo de agua al especificar griferías en tus proyectos?",
+  hashtags:"#ArquitecturaSustentable #InstalacionesSanitarias #ConstruccionEficiente #Ultragrif",
+  comment:"Explorá nuestras líneas con aireador en el catálogo: "+LINK,
+  tips:"Contenido educativo: explica la tecnología de forma simple y conecta con la demanda de eficiencia hídrica en los pliegos.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-08", time:"13:00", pillar:"p3", format:"Carrusel PDF (5 placas)",
+  persona:"Distribuidores y constructoras", objective:"Confianza",
+  topic:"Red nacional y postventa real",
+  src:["canva","cat"], ready:true,
+  creative:"Carrusel en Canva: 1) Pregunta de portada. 2) Placa \"Servicio técnico en todo el país\" con un mapa de Argentina sin marcar provincias. 3) Garantía de 5 años. 4) Stock de repuestos. 5) Departamento de Obras + llamado a la acción.",
+  copy:"¿De qué sirve el mejor diseño si no tenés respaldo cuando lo necesitás?\n\nEn una obra, la venta es solo el comienzo. Lo que importa aparece después: cuando la obra ya está entregada y surge un imprevisto.\n\nEn Ultragrif garantizamos nuestros productos por 5 años. Y esa garantía se apoya en una estructura concreta:\n\n✅ Red de servicio técnico con alcance nacional.\n✅ Stock de repuestos para resolver rápido.\n✅ Un Departamento de Obras que acompaña antes, durante y después de la instalación.\n\nCuando especificás Ultragrif, sumás un producto de diseño y un equipo que sigue presente después de la entrega.\n\nDeslizá para ver cómo funciona nuestro respaldo postventa. 👉",
+  hashtags:"#ServicioPostventa #IndustriaArgentina #Construccion #Ultragrif",
+  comment:"Conocé nuestra política de garantía y postventa: "+LINK,
+  tips:"Se apoya en los cuatro pilares del respaldo: garantía de 5 años, red nacional de servicio técnico, stock de repuestos y Departamento de Obras.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-13", time:"08:45", pillar:"p2", format:"Carrusel PDF (7 placas)",
+  persona:"Arquitectos, directores de obra y constructoras", objective:"Autoridad y leads",
+  topic:"5 puntos a revisar antes de especificar griferías",
+  src:["canva","cat"], ready:true,
+  creative:"Carrusel tipo checklist, muy guardable. Portada: \"5 puntos a revisar antes de especificar la grifería de tu obra\". Una placa por punto con ícono y foto de producto del catálogo. Última placa: Departamento de Obras + \"Guardá este post\".",
+  copy:"Elegir la grifería de una obra no es solo una decisión estética. Una mala especificación se paga después: en reclamos, en repuestos y en horas de obra.\n\nArmamos un checklist con los 5 puntos que conviene revisar antes de cerrar el pliego:\n\n1️⃣ Presión de agua disponible en el edificio.\n2️⃣ Tipo de cierre y su durabilidad.\n3️⃣ Acabado según el uso del espacio.\n4️⃣ Disponibilidad de repuestos a futuro.\n5️⃣ Garantía y servicio técnico detrás del producto.\n\nDeslizá para ver qué mirar en cada punto. 👉\n\nSi estás en esa etapa, nuestro Departamento de Obras te acompaña desde el anteproyecto.",
+  hashtags:"#Arquitectura #DireccionDeObra #Construccion #Ultragrif",
+  comment:"¿Tenés un proyecto en marcha? Escribinos por mensaje directo y lo vemos juntos.",
+  tips:"Contenido educativo que se guarda y se comparte. Ideal para posicionar al Departamento de Obras como asesor.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-14", time:"12:30", pillar:"p5", format:"Video nativo o carrusel de fotos",
+  persona:"Arquitectos, interioristas y distribuidores", objective:"Humanización de marca",
+  topic:"Ultragrif en eventos del sector",
+  src:["drive","ig"], ready:true,
+  creative:"Usar el video ULTRAGRIF.mp4 y las fotos de la carpeta de Drive \"Fotos eventos ULTRAGRIF mar 26\". Video: recortar a 1:1 o 4:5, menos de 60 segundos, subtítulos grandes. Carrusel: 6 a 8 fotos del stand, producto y gente conversando.",
+  copy:"Cara a cara con quienes diseñan y construyen. 🤝\n\nEn una de las últimas exposiciones del sector llevamos nuestras líneas y compartimos jornadas de charla con arquitectos, interioristas, instaladores y distribuidores.\n\nEstos encuentros nos dan algo que ningún catálogo puede dar: escuchar de primera mano qué necesitan los proyectos de hoy.\n\nGracias a todos los que se acercaron al stand. Si nos visitaste, contanos qué línea te llamó más la atención.\n\n¿En qué próximo evento del sector te gustaría encontrarnos?",
+  hashtags:"#Arquitectura #DiseñoDeInteriores #IndustriaNacional #Ultragrif",
+  comment:"Conocé todas las líneas que presentamos en el catálogo: "+LINK,
+  tips:"Etiquetar la página del evento u organizador. Si se suma el nombre del evento al copy, etiquetar también al organizador.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-15", time:"09:00", pillar:"p1", format:"Carrusel PDF (5 placas)",
+  persona:"Arquitectos e interioristas", objective:"Educación y marca",
+  topic:"Guía de acabados: cromo, negro mate o Black Chrome",
+  src:["cat","canva"], ready:true,
+  creative:"Carrusel estilo revista de diseño: una placa por acabado con foto del catálogo, para qué estilo funciona y con qué materiales combina. Última placa: \"Guardá este post para tu próximo proyecto\".",
+  copy:"La grifería dejó de ser un accesorio para convertirse en un punto focal del diseño de interiores. 🖤✨\n\n¿Qué acabado elegir según el estilo del proyecto? Preparamos una guía rápida para especificadores:\n\n1️⃣ Cromo brillante: el clásico. Refleja la luz, amplía espacios chicos y transmite higiene. Ideal para proyectos corporativos y hotelería.\n2️⃣ Negro mate: absorbe la luz. Aporta sobriedad y va muy bien con estilos industriales o escandinavos.\n3️⃣ Black Chrome: combina el brillo del cromo con la profundidad de los tonos oscuros. Espejado, sofisticado y distinto.\n\nDeslizá para ver ejemplos y combinaciones con revestimientos. 👉\n\n¿Cuál es tu acabado favorito para especificar este año?",
+  hashtags:"#Interiorismo #DiseñoDeInteriores #Arquitectura #Ultragrif",
+  comment:"Conocé todos nuestros acabados en el catálogo: "+LINK,
+  tips:"Contenido muy guardable. Cada placa lleva una foto del catálogo que muestre ese acabado.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-20", time:"13:00", pillar:"p2", format:"Artículo de LinkedIn", via:"linkedin",
+  persona:"Constructoras y desarrolladores", objective:"Leads y autoridad",
+  topic:"El costo total de propiedad en instalaciones",
+  src:["canva","cat"], ready:true,
+  creative:"Portada del artículo en Canva: planos sobre un escritorio, casco de obra y grifería del catálogo. Texto del artículo: 600 a 800 palabras.",
+  copy:"NUEVO ARTÍCULO ✍️ | ¿Por qué la grifería más barata suele ser la decisión más cara para un desarrollador?\n\nAnalizamos el costo total de propiedad aplicado a las instalaciones sanitarias en obras de escala.\n\nEn el artículo:\n👉 Los costos ocultos de los repuestos importados.\n👉 El impacto de las fallas de cierre en la entrega de unidades.\n👉 Cómo un Departamento de Obras propio reduce horas de instalación.\n\nTe invitamos a leer el análisis completo y dejar tu opinión en los comentarios.",
+  hashtags:"#DesarrolloInmobiliario #Constructoras #GestionDeObras #Ultragrif",
+  comment:"El enlace al artículo va integrado en la publicación. No hace falta comentario con link externo.",
+  tips:"El artículo conviene tenerlo redactado antes del 16/10. Formato que posiciona en Google y da estatus de voz experta.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-21", time:"08:30", pillar:"p2", format:"Imagen única",
+  persona:"Arquitectos y desarrolladores", objective:"Conversión a ventas",
+  topic:"El valor del anteproyecto",
+  src:["cat","canva","ia"], ready:true,
+  creative:"Plano sobre una mesa, un café y el catálogo técnico de Ultragrif. Se puede componer en Canva con IA (escena ilustrativa).",
+  copy:"El éxito de la instalación sanitaria se define mucho antes de poner el primer ladrillo. 📐\n\nDesde el Departamento de Obras de Ultragrif nos involucramos en tu anteproyecto.\n\n¿En qué consiste el asesoramiento temprano?\n\n1. Análisis del proyecto y sugerencia de líneas que optimicen el presupuesto sin resignar diseño.\n2. Visita a obra.\n3. Acompañamiento en la postventa.\n\nTraenos tu proyecto en plano y trabajamos juntos la solución técnica.\n\nEscribinos por mensaje directo y coordinamos una reunión de revisión.",
+  hashtags:"#Arquitectura #Anteproyecto #Construccion #DesarrolloInmobiliario #Ultragrif",
+  comment:"También podés dejar tus datos en el formulario de contacto para obras: "+LINK,
+  tips:"Ese día, revisar los mensajes directos de la página más de una vez y derivar cada consulta al Departamento de Obras.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-22", time:"12:30", pillar:"p1", format:"Video corto (1:1 o 4:5)",
+  persona:"Distribuidores y arquitectos", objective:"Educación de producto",
+  topic:"Línea Gourmet Steel para cocinas",
+  src:["ig","cat","canva"], ready:true,
+  creative:"Si hay un reel de Gourmet Steel en Instagram, adaptarlo a 1:1 o 4:5. Si no, animación en Canva con fotos del catálogo: zoom al pico extraíble y textos con cada característica.",
+  copy:"La cocina moderna exige un nivel de funcionalidad profesional. 🧑‍🍳\n\nPara los proyectos donde la isla es el corazón de la casa, diseñamos la línea Gourmet Steel.\n\nPensada para cocinas que se usan de verdad:\n\n✔️ Diseño de presencia, pensado para ser protagonista de la isla.\n✔️ Una terminación que acompaña cocinas contemporáneas.\n✔️ El respaldo de 5 años de garantía y servicio técnico nacional.\n\nMirá en el video cómo funciona.",
+  hashtags:"#DiseñoDeCocinas #ArquitecturaInterior #Griferias #Ultragrif",
+  comment:"Fichas técnicas y cotizaciones para distribuidores por mensaje directo.",
+  tips:"Contenido ideal para captar distribuidores que buscan productos de buen margen.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-27", time:"09:00", pillar:"p4", format:"Carrusel editorial",
+  persona:"Constructoras e inversores", objective:"Autoridad B2B",
+  topic:"Las terminaciones y el valor de una unidad",
+  src:["canva","cat"], ready:true,
+  creative:"Carrusel tipográfico sobrio, con frases grandes y fotos de producto. Mensaje dirigido al bolsillo del desarrollador.",
+  copy:"¿Cuánto pesan el baño y la cocina en la decisión de compra de una unidad? 📈\n\nCuando un inversor o comprador recorre una unidad modelo, las terminaciones funcionan como señal: la calidad de la grifería y los herrajes se lee como un indicador de la calidad constructiva de todo el edificio.\n\nAhorrar unos pocos dólares por unidad con griferías genéricas puede costar mucho más en valor percibido.\n\nEn Ultragrif trabajamos con desarrolladores para lograr ese impacto visual (Línea Autograph, Black Chrome) con costos competitivos de industria nacional.\n\n¿Coincidís en que las terminaciones definen la venta de un inmueble?",
+  hashtags:"#RealEstateArgentina #DesarrolloInmobiliario #Arquitectura #Ultragrif",
+  comment:"Consultá nuestro catálogo para desarrollos: "+LINK,
+  tips:"Hablar de valor percibido engancha a desarrolladores. Si querés sumar un dato numérico, tiene que tener fuente citada.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-28", time:"13:00", pillar:"p1", format:"Infografía o carrusel",
+  persona:"Arquitectos e instaladores", objective:"Educación técnica",
+  topic:"Monocomando vs. doble comando en obras grandes",
+  src:["cat","canva"], ready:true,
+  creative:"Comparativa técnica en Canva con fotos del catálogo de un monocomando y un doble comando. Íconos simples para cada ventaja.",
+  copy:"Monocomando o doble comando: ¿qué conviene especificar en desarrollos multifamiliares?\n\nEl mercado ofrece las dos opciones, pero vemos una tendencia clara hacia el monocomando en torres y condominios.\n\nPor tres razones constructivas:\n\n1️⃣ Menos puntos de falla: un solo cartucho cerámico reduce juntas y posibles filtraciones.\n2️⃣ Instalación más rápida: requiere menos perforaciones en mesadas y bachas.\n3️⃣ Temperatura en menos tiempo: se llega antes a la temperatura deseada, con menos desperdicio de agua caliente.\n\nDeslizá para ver cada ventaja en detalle. 👉",
+  hashtags:"#IngenieriaSanitaria #Construccion #Instaladores #Ultragrif",
+  comment:"Conocé nuestras soluciones para obra: "+LINK,
+  tips:"Contenido técnico que genera autoridad y se guarda.",
+  verify:[],
+  planB:"",
+  changed:[]
+},
+{
+  date:"2026-10-29", time:"08:30", pillar:"p3", format:"Carrusel PDF (5 placas)",
+  persona:"Distribuidores, constructoras y arquitectos", objective:"Confianza y comunidad",
+  topic:"Cierre de mes: por qué elegir un fabricante nacional",
+  src:["canva","cat"], ready:true,
+  creative:"Carrusel de cierre: portada de agradecimiento y una placa por ventaja, con fotos de producto del catálogo.",
+  copy:"Se va octubre y queremos cerrar el mes agradeciendo a los arquitectos, constructoras y distribuidores que eligen trabajar con industria nacional. 🤝\n\nElegir un fabricante argentino tiene ventajas muy concretas para una obra:\n\n1️⃣ Interlocutor directo: hablás con el Departamento de Obras, sin intermediarios.\n2️⃣ Repuestos disponibles en el país.\n3️⃣ 5 años de garantía con red de servicio técnico nacional.\n4️⃣ Diseño de vanguardia pensado para el mercado local.\n\nSeguimos a un mensaje de distancia para acompañar tu próximo proyecto. ¡Vamos por un gran noviembre!",
+  hashtags:"#IndustriaArgentina #ADNCercano #Construccion #Ultragrif",
+  comment:"Escribinos por mensaje directo o al mail comercial para tu próximo proyecto.",
+  tips:"Cierre del mes: revisar qué post tuvo más guardados y comentarios para repetir el formato en noviembre.",
+  verify:[],
+  planB:"",
+  changed:[]
+}
+];
+
+
+
+const actions = [
+  ["6/10: Día de la Arquitectura","Desde la página, comentar y reaccionar a publicaciones de estudios de arquitectura que celebren el día."],
+  ["Respuestas en menos de 12 horas","Toda consulta en comentarios se responde en público y se deriva a mensaje directo."],
+  ["Links siempre en el primer comentario","Nunca en el cuerpo del post, para no perder alcance."],
+  ["Mensajes directos del 13 y el 21/10","Son los posts con llamado a consultar: seguimiento de la bandeja de la página y derivación al Departamento de Obras."]
+];
+
+
+
+/* ---------- Render ---------- */
+const $ = s => document.querySelector(s);
+const DOW = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const parse = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const today = new Date(); today.setHours(0,0,0,0);
+const isPast = p => parse(p.date) < today;
+const pc = p => `var(--${p.pillar})`;
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+function flags(p){
+  let f = "";
+  if(p.via==="linkedin") f += `<span class="flag f-li" title="Se publica desde la app de LinkedIn, no desde Metricool"><span class="li-badge">in</span>Desde LinkedIn · no Metricool</span>`;
+
+  return f;
+}
+
+$("#legend").innerHTML = Object.entries(PILLARS).map(([k,v]) =>
+  `<span class="pchip" style="--pc:var(--${k})"><span class="dot"></span>${v.name}</span>`).join("");
+
+/* Calendario */
+(function(){
+  const offset = 3; // 1/10/2026 es jueves (Lun = primera columna)
+  let h = "";
+  for(let i=0;i<offset;i++) h += `<div class="blank"></div>`;
+  for(let d=1; d<=31; d++){
+    const ds = `2026-10-${String(d).padStart(2,"0")}`, dt = parse(ds), wd = dt.getDay();
+    const cls = [(wd===0||wd===6)?"weekend":"", dt<today?"past":"", dt.getTime()===today.getTime()?"today":""].join(" ");
+    const label = dt.getTime()===today.getTime() ? "Hoy" : DOW[wd].slice(0,3);
+    const p = posts.find(x=>x.date===ds);
+    if(p){
+      h += `<button type="button" class="day ${cls}" style="--pc:${pc(p)}" data-date="${ds}" aria-label="${DOW[wd]} ${d}: ${p.topic}">
+        <span class="num"><b>${d}</b><small>${label} · ${p.time}</small></span>
+        <span class="pill"><span class="dot"></span><span>${PILLARS[p.pillar].name}</span></span>
+        <span class="tm">${p.time}</span>
+        <span class="topic">${p.topic}</span>
+        <span class="fmt">${p.format}</span>
+        <span class="flags">${flags(p)}</span>
+      </button>`;
+    } else {
+      h += `<div class="day empty ${cls}"><span class="num"><b>${d}</b><small>${label}</small></span><span class="none">Sin publicación</span></div>`;
+    }
+  }
+  const rem = (7-(offset+31)%7)%7;
+  for(let i=0;i<rem;i++) h += `<div class="blank"></div>`;
+  $("#grid").innerHTML = h;
+  document.querySelectorAll("button.day").forEach(b=>b.addEventListener("click",()=>openPost(b.dataset.date)));
+})();
+
+/* Resumen */
+(function(){
+  const mon=new Date(today); mon.setDate(today.getDate()-((today.getDay()+6)%7));
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  let wk = posts.filter(p=>{const d=parse(p.date);return d>=mon&&d<=sun;});
+  if(!wk.length) wk = posts.filter(p=>parse(p.date)>=today).slice(0,3);
+  $("#weeklist").innerHTML = wk.length ? wk.map(p=>{const d=parse(p.date);
+    return `<button type="button" style="--pc:${pc(p)}" data-date="${p.date}"><span class="d">${DOW[d.getDay()].slice(0,3)} ${d.getDate()} · ${p.time}</span><span class="t">${p.topic}</span></button>`;}).join("")
+    : `<span style="color:var(--muted);font-size:14px">El mes terminó.</span>`;
+  document.querySelectorAll("#weeklist button").forEach(b=>b.addEventListener("click",()=>openPost(b.dataset.date)));
+})();
+
+(function(){
+  const groups=[[["carrusel","carruseles"],/carrusel/i],[["infografía","infografías"],/infograf/i],[["imagen","imágenes"],/imagen/i],[["video","videos"],/video/i],[["artículo","artículos"],/art[ií]culo/i]];
+  const used=new Set();
+  $("#formats").innerHTML=groups.map(([n,rx])=>{const c=posts.filter(p=>!used.has(p.date)&&rx.test(p.format));c.forEach(p=>used.add(p.date));return c.length?`<li><b>${c.length}</b> ${c.length===1?n[0]:n[1]}</li>`:"";}).join("");
+})();
+
+/* Ficha del día */
+const dlg = $("#dlg");
+function openPost(date){
+  const p = posts.find(x=>x.date===date); if(!p) return;
+  const d = parse(p.date);
+  $("#dlg-head").style.setProperty("--pc", pc(p));
+  $("#dlg-date").textContent = `${DOW[d.getDay()]} ${d.getDate()} de octubre · ${p.time} hs`;
+  $("#dlg-title").textContent = p.topic;
+  let h = `<div style="display:flex;flex-wrap:wrap;gap:6px">${flags(p)}</div>
+    <dl class="facts">
+      <div><dt>Pilar</dt><dd style="color:${pc(p)}">${PILLARS[p.pillar].name}</dd></div>
+      <div><dt>Formato</dt><dd>${p.format}</dd></div>
+      <div><dt>Horario</dt><dd>${p.time} hs</dd></div>
+      <div><dt>Público</dt><dd>${p.persona}</dd></div>
+      <div><dt>Objetivo</dt><dd>${p.objective}</dd></div>
+      <div><dt>Material</dt><dd>${p.src.map(s=>SRC[s]).join(" + ")}</dd></div>
+    </dl>
+    ${p.via==="linkedin" ? `<div class="sec"><h3>Dónde se publica</h3><div class="box li"><b>Directo desde la app de LinkedIn, no desde Metricool.</b> Metricool no permite publicar este formato, así que no va a figurar en su calendario. La publicación se puede ver en la página de LinkedIn de Griferías Ultragrif S.A.</div></div>` : ""}
+    <div class="sec"><h3>Estilo de imagen y dirección de arte</h3><div class="box mat">${esc(p.creative)}</div></div>`;
+  if(p.verify.length) h += `<div class="sec"><h3>Chequear antes de publicar</h3><div class="box warn"><ul>${p.verify.map(v=>`<li>${esc(v)}</li>`).join("")}</ul></div></div>`;
+  h += `<div class="sec"><div class="sec-head"><h3>Copy</h3><button class="copybtn" id="cp" type="button">Copiar copy + hashtags</button></div>
+      <div class="li-preview"><div class="li-head"><div class="li-logo">U</div><div><b>Griferías Ultragrif S.A.</b><small>Fabricante nacional de griferías</small></div></div>
+      <p class="copytext" id="copytext">${esc(p.copy)}</p><div class="tags">${p.hashtags}</div></div></div>
+    <div class="sec"><div class="sec-head"><h3>Primer comentario</h3><button class="copybtn" id="cp2" type="button">Copiar</button></div><div class="box plain" id="cmt">${esc(p.comment)}</div></div>
+    <div class="sec"><h3>Recomendación</h3><p>${esc(p.tips)}</p></div>`;
+  if(p.planB) h += `<div class="sec"><h3>Plan B</h3><div class="box plain">${esc(p.planB)}</div></div>`;
+  $("#dlg-body").innerHTML = h;
+  $("#cp").addEventListener("click", e => copyTo(e.currentTarget, p.copy+"\n\n"+p.hashtags, "#copytext"));
+  $("#cp2").addEventListener("click", e => copyTo(e.currentTarget, p.comment, "#cmt"));
+  dlg.showModal(); $("#dlg-body").scrollTop = 0;
+}
+$("#dlg-close").addEventListener("click",()=>dlg.close());
+dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+
+function copyTo(btn, text, sel){
+  const o = btn.textContent;
+  const done = msg => { btn.textContent = msg; setTimeout(()=>btn.textContent=o,1800); };
+  const fallback = () => { const r=document.createRange(); r.selectNodeContents($(sel)); const s=getSelection(); s.removeAllRanges(); s.addRange(r); done("Texto seleccionado"); };
+  try{ navigator.clipboard.writeText(text).then(()=>done("Copiado"), fallback); }catch(e){ fallback(); }
+}
+
+/* Estrategia y acciones */
+$("#mix").innerHTML = Object.entries(PILLARS).map(([k,v])=>{
+  const c = posts.filter(p=>p.pillar===k).length, pct = Math.round(c/posts.length*100);
+  return `<div class="mix" style="--pc:var(--${k})"><span>${v.name}</span><span class="track"><span class="fill" style="width:${pct}%"></span><span class="tgt" style="left:${v.target}%"></span></span><span class="v">${c} · ${pct}% / ${v.target}%</span></div>`;
+}).join("");
+$("#actions").innerHTML = actions.map((a,i)=>`<li><span class="i">${String(i+1).padStart(2,"0")}</span><div><b>${a[0]}</b>${a[1]}</div></li>`).join("");
+
+</script>
+
+</body></html>
