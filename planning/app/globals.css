@@ -635,3 +635,33 @@ select.person-add { width: auto; border-style: dashed; color: var(--primary); fo
 .pub-row { flex-wrap: wrap; }
 .pub-main { flex: 1 1 220px; }
 .pub-actions { margin-left: auto; }
+
+/* ---------- Resúmenes mensuales ---------- */
+.sum-client { margin-bottom: 22px; }
+.sum-client h2 { display: flex; align-items: center; gap: 8px; font-size: 17px; margin: 0 0 10px; }
+.sum-client .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.sum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.sum-card { display: flex; flex-direction: column; gap: 6px; text-align: left; background: var(--surface); border: 1px solid var(--border); border-top: 4px solid; border-radius: var(--r-md); padding: 12px 14px; cursor: pointer; color: var(--ink); min-width: 0; }
+.sum-card:hover, .sum-card.sel { border-color: var(--primary); border-top-color: inherit; box-shadow: var(--shadow); }
+.sum-card .sum-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 15px; }
+.sum-card p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.sum-month { font-size: 12.5px; font-weight: 600; }
+.sum-foot { font-size: 11.5px; margin-top: auto; }
+.sum-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; }
+.md { font-size: 14px; line-height: 1.55; }
+.md h2, .md h3, .md h4 { margin: 18px 0 6px; line-height: 1.25; }
+.md h2 { font-size: 18px; }
+.md h3 { font-size: 16px; }
+.md h4 { font-size: 14.5px; }
+.md > :first-child { margin-top: 0; }
+.md p { margin: 6px 0; }
+.md ul, .md ol { margin: 4px 0 8px; padding-left: 22px; }
+.md li { margin: 3px 0; }
+.md a { color: var(--primary); }
+.md code { font-family: var(--mono); font-size: 12.5px; background: var(--surface2); padding: 1px 4px; border-radius: 4px; }
+.md blockquote { margin: 8px 0; padding: 6px 12px; border-left: 3px solid var(--border); color: var(--muted); }
+.md hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
+.md-table { overflow-x: auto; margin: 8px 0; }
+.md table { border-collapse: collapse; font-size: 13px; }
+.md th, .md td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
+.md th { background: var(--surface2); }
