@@ -190,3 +190,27 @@ test("calendario real: Confort Iván (const data = { día: {...} }, días libres
   assert.match(a.notes, /También lleva stories\.\nLink a: Web confortivan\.com\.ar\nProducción: /);
   assert.doesNotMatch(r.pieces[1].notes, /Link a/); // "—" no se importa
 });
+
+test("datos en el script con claves abreviadas (t, f, can, est, n) y .map() al final", () => {
+  const r = parse(`<title>Calendario CM · Modus Retis</title><div id="grid"></div><script>
+const ESTADOS=["En guion","En producción","Programado","Publicado"];
+let DATA=[
+{t:"Reel ERP / Odoo",tema:["Pain Points"],int:"Conversión",can:["TikTok","Instagram Reels","LinkedIn"],est:"En producción",f:"2026-11-10",orig:"2026-10-29",p:"Medio",rec:"Canva y Capcut",
+n:"HOOK: ¿Trabajás con mil pestañas abiertas?"},
+{t:"Reel Negocio que depende del dueño",tema:["Pain Points"],int:"Educación",can:["Instagram Reels"],est:"En guion",f:"2026-11-05",p:"Medio",rec:"",n:""},
+{t:"Historia — Quiénes somos",tema:["Visión Modus"],int:"Posicionamiento",can:["Historias de Instagram"],est:"Publicado",f:"2026-08-19",p:"Alta",rec:"Canva",n:"Somos Modus Retis"}
+].map((d,i)=>({...d,id:i}));
+</script>`);
+  assert.equal(r.method, "script");
+  assert.equal(r.client, "Modus Retis");
+  assert.deepEqual(
+    r.pieces.map((p) => [p.date, p.title, p.networks.sort().join("+"), p.format, p.status, p.pillar]),
+    [
+      ["2026-08-19", "Historia — Quiénes somos", "instagram", "historia", "publicada", "Visión Modus"],
+      ["2026-11-05", "Reel Negocio que depende del dueño", "instagram", "reel", "idea", "Pain Points"],
+      ["2026-11-10", "Reel ERP / Odoo", "instagram+linkedin+tiktok", "reel", "en_produccion", "Pain Points"],
+    ],
+  );
+  assert.match(r.pieces[2].brief, /^Guion: HOOK/);
+  assert.match(r.pieces[2].notes, /Intención: Conversión\nFecha original: 2026-10-29\nPrioridad: Medio\nRecursos: Canva y Capcut/);
+});

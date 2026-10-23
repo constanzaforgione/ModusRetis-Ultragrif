@@ -135,7 +135,7 @@ export function detectStatus(text: string): PostStatus | null {
   if (/aprobad|\bok\b|listo para|approved/.test(t)) return "aprobada";
   if (/revision|revisar|a revisar|feedback|review/.test(t)) return "en_revision";
   if (/produccion|diseno|disenando|en proceso|en curso|editando|grabando|in progress/.test(t)) return "en_produccion";
-  if (/idea|pendiente|borrador|draft|to ?do|por hacer/.test(t)) return "idea";
+  if (/idea|pendiente|borrador|draft|to ?do|por hacer|guion/.test(t)) return "idea";
   return null;
 }
 
@@ -547,11 +547,20 @@ const TITLE_KEYS = ["title", "titulo", "tema", "topic", "idea", "nombre", "name"
 
 // Claves habituales en datos de calendarios → campo (y rótulo cuando va a notas o brief)
 const DATA_KEYS: [RegExp, Field | "formats" | "skip", string?][] = [
+  // Claves abreviadas (t, can, est, n…), típicas de calendarios armados con IA
+  [/^(t|tit)$/, "title"],
+  [/^(can|canal|canales|channels)$/, "networks"],
+  [/^(est|estado)$/, "status"],
+  [/^(n|guion)$/, "brief", "Guion"],
+  [/^(orig|fecha original|original)$/, "notes", "Fecha original"],
+  [/^(p|prio|prioridad|priority)$/, "notes", "Prioridad"],
+  [/^(rec|recursos|herramientas|tools)$/, "notes", "Recursos"],
+  [/^(int|intencion|intent)$/, "pillar", "Intención"],
   [/^(product|producto|topic|tema|asunto)$/, "title"],
   [/^(f|fmt|formats|formatos|tipos)$/, "formats"],
   [/^(creative|creatividad|arte|visual|direccion de arte|brief)$/, "brief"],
   [/^(concept|concepto|idea central)$/, "brief", "Concepto"],
-  [/^(dev|desarrollo|guion|script|slides|placas|escenas)$/, "brief", "Desarrollo"],
+  [/^(dev|desarrollo|script|slides|placas|escenas)$/, "brief", "Desarrollo"],
   [/^(prod|produccion|material de produccion)$/, "notes", "Producción"],
   [/^(chan|channel|canal destino|link a|destino)$/, "notes", "Link a"],
   [/^(objective|objetivo|goal)$/, "pillar", "Objetivo"],
@@ -627,9 +636,14 @@ function piecesFromData(data: unknown, ctx: Ctx, dicts: unknown[] = []): Importe
     let dayN: number | null = null;
     let hasText = false;
     const nested: [string, unknown][] = [];
+    // Con un título explícito, "tema" es el pilar de contenido (Pain Points, Visión…) y no el título
+    const titled = Object.keys(o).some((k) => /^(t|tit|title|titulo)$/.test(norm(k)));
     for (const [k, val] of Object.entries(o)) {
       const nk = norm(k);
-      const df = dataField(k);
+      let df = dataField(k);
+      if (titled && /^(tema|topic|temas)$/.test(nk)) df = ["pillar", "Tema"];
+      // "f" puede ser formatos (["reel"]) o la fecha ("2026-11-10")
+      if (df?.[0] === "formats" && typeof val === "string" && /^\d{4}-\d{2}-\d{2}/.test(val)) df = ["date"];
       if (df?.[0] === "skip") {
         if (/^(ready|listo|done)$/.test(nk) && val === true) p.status ??= "aprobada";
         continue;
@@ -644,7 +658,10 @@ function piecesFromData(data: unknown, ctx: Ctx, dicts: unknown[] = []): Importe
           if (stories) p.notes = addText(p.notes, "También lleva stories.");
         } else if (df?.[0] === "networks" || /^(redes|networks|platforms|plataformas|canales)$/.test(nk)) setField(p, "networks", items.join(" "), ctx);
         else if (df?.[0] === "hashtags" || /^(hashtags|tags)$/.test(nk)) setField(p, "hashtags", items.map((x) => (x.startsWith("#") ? x : `#${x}`)).join(" "), ctx);
-        else if (df) put(p, df[0], df[0] === "brief" || df[0] === "notes" ? items.map((x) => `• ${x}`).join("\n") : items.join(", "), df[1] ?? (df[0] === "notes" ? k : undefined));
+        else if (df) {
+          put(p, df[0], df[0] === "brief" || df[0] === "notes" ? items.map((x) => `• ${x}`).join("\n") : items.join(", "), df[1] ?? (df[0] === "notes" ? k : undefined));
+          if (df[0] === "title") hasText = true;
+        }
         continue;
       }
       if (typeof val === "object") {
