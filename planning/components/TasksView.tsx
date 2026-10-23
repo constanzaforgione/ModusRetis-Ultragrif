@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { Avatars, ClientTag, shortNames } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
-import { VoiceDialog } from "./VoiceDialog";
+import { useVoice } from "./VoiceDialog";
 import { CalendarView } from "./CalendarView";
 import { canEditTask, isStaff, teamIds } from "@/lib/permissions";
 import { taskPeople } from "@/lib/people";
@@ -27,7 +27,7 @@ export function TasksView() {
   const [q, setQ] = useState("");
   const [hideDone, setHideDone] = useState(true);
   const [open, setOpen] = useState<TaskDraft | null>(null);
-  const [voice, setVoice] = useState(false);
+  const voice = useVoice();
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<TaskStatus | null>(null);
 
@@ -135,8 +135,8 @@ export function TasksView() {
           </div>
         </div>
         <div className="actions">
-          <button className="btn cyan" onClick={() => setVoice(true)}>
-            🎙 Dictar tareas
+          <button className="btn cyan" onClick={() => voice.open(client ? { client_id: client } : {})}>
+            🎙 Dictar
           </button>
           <button className="btn primary" onClick={() => setOpen({})}>
             + Nueva tarea
@@ -371,7 +371,6 @@ export function TasksView() {
       )}
 
       {open && <TaskDrawer key={open.id ?? "nueva"} task={open} onClose={() => setOpen(null)} />}
-      {voice && <VoiceDialog onClose={() => setVoice(false)} />}
     </>
   );
 }

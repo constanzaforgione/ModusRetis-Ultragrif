@@ -1,44 +1,127 @@
-// Dictado por voz → Claude ordena el texto en tareas nuevas y cambios sobre tareas existentes.
-// Devuelve borradores: la persona los revisa en pantalla antes de guardar (y RLS valida al guardar).
+// Dictado por voz → plan de cambios (tareas y proyectos nuevos, cambios en los que ya existen).
+// Con ANTHROPIC_API_KEY lo interpreta Claude; sin clave devuelve { ai: false } y el navegador usa el
+// intérprete local (gratis). Siempre son borradores: la persona los revisa antes de guardar y RLS valida al guardar.
 import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
-import { taskPeople } from "@/lib/people";
+import { buildVoiceContext, sanitizePlan, type VoiceAction, type VoiceContext } from "@/lib/voice/plan";
+import type { Profile } from "@/lib/types";
 
 export const maxDuration = 60;
 
 const PRIORITY = z.enum(["baja", "media", "alta", "urgente"]);
 const STATUS = z.enum(["pendiente", "en_curso", "bloqueada", "en_revision", "hecha"]);
+const PSTATUS = z.enum(["planificado", "en_curso", "en_pausa", "completado"]);
+const DATE = z.string().nullable().describe("AAAA-MM-DD, o null si no se dijo");
 
-const Plan = z.object({
-  tasks: z.array(
+const AiPlan = z.object({
+  new_projects: z.array(
     z.object({
-      title: z.string().describe("Título corto y accionable, empieza con verbo"),
+      ref: z.string().describe("Identificador corto (nuevo-1, nuevo-2…) para que las tareas nuevas de este dictado lo usen en project_ref"),
+      name: z.string(),
+      description: z.string(),
+      client_id: z.string().nullable(),
+      start_date: z.string().describe("AAAA-MM-DD; si no se dijo, hoy"),
+      end_date: z.string().describe("AAAA-MM-DD; si no se dijo, un mes después del inicio"),
+      owner_ids: z.array(z.string()),
+    }),
+  ),
+  project_changes: z.array(
+    z.object({
+      project_id: z.string(),
+      status: PSTATUS.nullable(),
+      start_date: DATE,
+      end_date: DATE,
+      name: z.string().nullable(),
+    }),
+  ),
+  new_tasks: z.array(
+    z.object({
+      title: z.string().describe("Título corto y accionable, verbo en infinitivo"),
       description: z.string().describe("Detalle o contexto dictado; vacío si no hay"),
       priority: PRIORITY,
-      assignee_id: z.string().nullable().describe("id de la persona; null = quien dicta"),
-      client_id: z.string().nullable().describe("id del cliente; null si es interna o no se menciona"),
-      start_date: z.string().nullable().describe("AAAA-MM-DD"),
-      due_date: z.string().nullable().describe("AAAA-MM-DD"),
+      assignee_ids: z.array(z.string()).describe("ids de personas asignables; vacío = quien dicta"),
+      client_id: z.string().nullable(),
+      project_id: z.string().nullable().describe("id de un proyecto existente"),
+      project_ref: z.string().nullable().describe("ref de un proyecto nuevo de este mismo dictado"),
+      start_date: DATE,
+      due_date: DATE,
+      start_time: z.string().nullable().describe("HH:MM si se dijo una hora"),
     }),
   ),
-  updates: z.array(
+  task_changes: z.array(
     z.object({
-      task_id: z.string().describe("id de una tarea existente de la lista"),
+      task_id: z.string(),
       status: STATUS.nullable(),
       priority: PRIORITY.nullable(),
-      start_date: z.string().nullable(),
-      due_date: z.string().nullable(),
-      summary: z.string().describe("Qué cambia, en una frase"),
+      start_date: DATE,
+      due_date: DATE,
+      start_time: z.string().nullable(),
+      assignee_ids: z.array(z.string()).nullable(),
+      project_id: z.string().nullable(),
+      title: z.string().nullable(),
+      note: z.string().nullable().describe("Texto para agregar a la descripción"),
     }),
   ),
+  not_understood: z.array(z.string()).describe("Partes del dictado que no se pudieron convertir en nada"),
 });
-export type VoicePlan = z.infer<typeof Plan>;
 
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+const SYSTEM = (today: string) => `Sos el asistente de planificación de Modus Retis, una agencia tecnológica argentina.
+Recibís lo que una persona dictó por voz (con errores de transcripción, muletillas, ideas mezcladas o en desorden) y lo convertís en cambios concretos en la app:
+- new_projects: proyectos nuevos del roadmap (solo si pide crear uno).
+- project_changes: cambios en proyectos existentes (estado, fechas, nombre).
+- new_tasks: tareas nuevas. Una por cada cosa a hacer, aunque las diga todas juntas. Interpretá la intención: el título es breve, claro y empieza con un verbo en infinitivo ("Enviar presupuesto a Placebo"), no la frase tal cual; el contexto útil va a la descripción.
+- task_changes: cambios en tareas existentes (estado, prioridad, fechas, responsables, proyecto, título) cuando se refiere a una de la lista.
+Reglas:
+- Hoy es ${DIAS[new Date(`${today}T12:00:00Z`).getUTCDay()]} ${today} (Argentina). Resolvé fechas relativas ("el viernes", "la semana que viene", "fin de mes", "en dos semanas") a AAAA-MM-DD. "Para el X" = due_date.
+- Prioridad: "urgente", "ya", "sí o sí" → urgente; "importante" → alta; "cuando puedas", "sin apuro" → baja; si no dice, media.
+- "contexto.desde" es dónde está parada la persona: si dice "agregá tareas" sin nombrar proyecto o cliente, van a ese proyecto o cliente. Si nombra otro proyecto, va al que nombra.
+- Las tareas de un proyecto llevan el client_id del proyecto. Si las tareas van a un proyecto nuevo del mismo dictado, usá project_ref con su ref.
+- Matcheá nombres aunque estén mal transcriptos ("ultra grif" = Ultragrif, "Yani" = Yanina). Usá solo ids de las listas; si no hay uno claro, null.
+- assignee_ids solo con personas asignables. Si la persona no se puede asignar, dejalo vacío.
+- No inventes nada que no se haya dicho. Si algo no se entiende, ponelo en not_understood.`;
+
+/** Lo que devuelve Claude, en el formato común de la app */
+function toActions(p: z.infer<typeof AiPlan>, ctx: VoiceContext): VoiceAction[] {
+  const pid = (id: string | null) => (id && ctx.projects.some((x) => x.id === id) ? id : null);
+  return [
+    ...p.new_projects.map((x): VoiceAction => ({ kind: "create_project", ref: x.ref, project: { ...x } })),
+    ...p.project_changes.map(
+      (x): VoiceAction => ({
+        kind: "update_project",
+        project_id: x.project_id,
+        changes: { status: x.status ?? undefined, start_date: x.start_date ?? undefined, end_date: x.end_date ?? undefined, name: x.name ?? undefined },
+      }),
+    ),
+    ...p.new_tasks.map((x): VoiceAction => {
+      const project = pid(x.project_id);
+      const client = x.client_id ?? (project ? ctx.projects.find((q) => q.id === project)!.client_id : null);
+      return { kind: "create_task", task: { ...x, project_id: project, client_id: client } };
+    }),
+    ...p.task_changes.map(
+      (x): VoiceAction => ({
+        kind: "update_task",
+        task_id: x.task_id,
+        changes: {
+          status: x.status ?? undefined,
+          priority: x.priority ?? undefined,
+          start_date: x.start_date ?? undefined,
+          due_date: x.due_date ?? undefined,
+          start_time: x.start_time ?? undefined,
+          assignee_ids: x.assignee_ids ?? undefined,
+          project_id: x.project_id ?? undefined,
+          title: x.title ?? undefined,
+          note: x.note ?? undefined,
+        },
+      }),
+    ),
+  ];
+}
 
 export async function POST(req: Request) {
   const supabase = await supabaseServer();
@@ -47,95 +130,71 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  const { transcript } = (await req.json().catch(() => ({}))) as { transcript?: string };
+  const { transcript, scope } = (await req.json().catch(() => ({}))) as { transcript?: string; scope?: VoiceContext["scope"] };
   const text = (transcript ?? "").trim().slice(0, 6000);
   if (!text) return NextResponse.json({ error: "No llegó texto dictado" }, { status: 400 });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    // Sin IA: una sola tarea con lo dictado
-    const plan: VoicePlan = {
-      tasks: [{ title: text.slice(0, 120), description: text.length > 120 ? text : "", priority: "media", assignee_id: null, client_id: null, start_date: null, due_date: null }],
-      updates: [],
-    };
-    return NextResponse.json({ plan, ai: false });
-  }
+  // Sin clave: el navegador interpreta con el intérprete local
+  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ ai: false });
 
-  const [{ data: profiles }, { data: clients }, { data: tasks }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, lead_id, role").eq("active", true),
-    supabase.from("clients").select("id, name").eq("active", true),
-    supabase.from("tasks").select("id, title, assignee_id, assignee_ids, status, due_date").neq("status", "hecha").limit(300),
+  const [{ data: profiles }, { data: clients }, { data: projects }, { data: tasks }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, lead_id, role, active"),
+    supabase.from("clients").select("id, name, active"),
+    supabase.from("projects").select("id, name, client_id, start_date, end_date, status").limit(300),
+    supabase.from("tasks").select("id, title, project_id, client_id, status, due_date, assignee_id, assignee_ids, created_by").neq("status", "hecha").limit(600),
   ]);
   const me = profiles?.find((p) => p.id === user.id);
-  // Solo tareas que quien dicta puede editar (mismo criterio que la base)
-  const manageable = new Set(
-    (profiles ?? [])
-      .filter((p) => p.id === user.id || me?.role === "admin" || (me?.role === "lider" && p.lead_id === user.id))
-      .map((p) => p.id),
-  );
-  const editable = (tasks ?? []).filter((t) => taskPeople(t).some((id) => manageable.has(id)));
+  if (!me) return NextResponse.json({ error: "No encontramos tu perfil" }, { status: 403 });
+  const ctx = buildVoiceContext({
+    me: me as Profile,
+    profiles: (profiles ?? []) as Profile[],
+    clients: clients ?? [],
+    projects: projects ?? [],
+    tasks: tasks ?? [],
+    today: todayISO(),
+    scope: { project_id: scope?.project_id ?? null, client_id: scope?.client_id ?? null },
+  });
 
-  const today = todayISO();
-  const weekday = DIAS[new Date(`${today}T12:00:00Z`).getUTCDay()];
-
-  const system = `Sos el asistente de planificación de Modus Retis, una agencia tecnológica argentina.
-Recibís lo que una persona dictó por voz (puede tener errores de transcripción, muletillas o varias ideas mezcladas) y lo convertís en:
-- "tasks": tareas nuevas. Una por cada cosa a hacer. Título breve que empiece con verbo en infinitivo; el resto va en la descripción.
-- "updates": cambios sobre tareas que ya existen (cambiar estado, prioridad o fechas) cuando la persona se refiere claramente a una de la lista.
-Reglas:
-- Hoy es ${weekday} ${today} (hora de Argentina). Resolvé fechas relativas ("el viernes", "la semana que viene", "fin de mes") a AAAA-MM-DD. "Para el X" = due_date.
-- Prioridad: "urgente", "ya", "hoy sí o sí" → urgente; "importante" → alta; "cuando puedas", "sin apuro" → baja; si no dice nada, media.
-- assignee_id: solo ids de "personas asignables". Si no se nombra a nadie o la persona no es asignable, null.
-- client_id: solo ids de la lista de clientes, matcheando aunque la transcripción escriba mal el nombre (ej. "meli retis", "ultra grif"). Si no hay cliente claro, null.
-- No inventes tareas que no se dictaron. No uses ids que no estén en las listas.`;
-
+  const desde = ctx.scope.project_id
+    ? { proyecto: ctx.projects.find((p) => p.id === ctx.scope.project_id)?.name, project_id: ctx.scope.project_id }
+    : ctx.scope.client_id
+      ? { cliente: ctx.clients.find((c) => c.id === ctx.scope.client_id)?.name, client_id: ctx.scope.client_id }
+      : "la app en general";
   const context = {
-    quien_dicta: { id: user.id, nombre: me?.full_name },
-    personas_asignables: (profiles ?? []).filter((p) => manageable.has(p.id)).map((p) => ({ id: p.id, nombre: p.full_name })),
-    clientes: (clients ?? []).map((c) => ({ id: c.id, nombre: c.name })),
-    tareas_existentes_editables: editable.map((t) => ({ id: t.id, titulo: t.title, estado: t.status, vence: t.due_date })),
+    quien_dicta: { id: ctx.me.id, nombre: ctx.me.name, puede_crear_proyectos: ctx.me.staff },
+    desde,
+    personas: ctx.people.map((p) => ({ id: p.id, nombre: p.name, asignable: p.assignable })),
+    clientes: ctx.clients,
+    proyectos: ctx.projects.map((p) => ({ id: p.id, nombre: p.name, client_id: p.client_id, inicio: p.start_date, fin: p.end_date, estado: p.status })),
+    tareas_abiertas_editables: ctx.tasks.map((t) => ({ id: t.id, titulo: t.title, project_id: t.project_id, client_id: t.client_id, estado: t.status, vence: t.due_date })),
   };
 
+  // Modelo configurable: VOICE_MODEL=claude-haiku-5-5 sale ~40 veces más barato
+  const model = process.env.VOICE_MODEL || "claude-opus-5-5";
+  const fallback = !/haiku/.test(model);
   try {
     const client = new Anthropic();
-    const response = await client.messages.parse({
-      model: "claude-opus-5-5",
+    const response = await client.beta.messages.parse({
+      model,
       max_tokens: 16000,
-      output_config: { effort: "low", format: zodOutputFormat(Plan) },
-      system,
-      messages: [
-        {
-          role: "user",
-          content: `<contexto>\n${JSON.stringify(context)}\n</contexto>\n\n<dictado>\n${text}\n</dictado>`,
-        },
-      ],
+      ...(fallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
+      output_config: { effort: "low", format: betaZodOutputFormat(AiPlan) },
+      system: SYSTEM(ctx.today),
+      messages: [{ role: "user", content: `<contexto>\n${JSON.stringify(context)}\n</contexto>\n\n<dictado>\n${text}\n</dictado>` }],
     });
     if (response.stop_reason === "refusal" || !response.parsed_output) {
-      return NextResponse.json({ error: "No pudimos interpretar el dictado. Probá de nuevo o cargala a mano." }, { status: 422 });
+      return NextResponse.json({ error: "No pudimos interpretar el dictado. Probá de nuevo o cargalo a mano." }, { status: 422 });
     }
-    const plan = response.parsed_output;
-    // Saneamos ids inventados
-    const validPeople = new Set(context.personas_asignables.map((p) => p.id));
-    const validClients = new Set(context.clientes.map((c) => c.id));
-    const validTasks = new Set(editable.map((t) => t.id));
-    const isDate = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null);
-    plan.tasks = plan.tasks.map((t) => ({
-      ...t,
-      assignee_id: t.assignee_id && validPeople.has(t.assignee_id) ? t.assignee_id : null,
-      client_id: t.client_id && validClients.has(t.client_id) ? t.client_id : null,
-      start_date: isDate(t.start_date),
-      due_date: isDate(t.due_date),
-    }));
-    plan.updates = plan.updates
-      .filter((u) => validTasks.has(u.task_id))
-      .map((u) => ({ ...u, start_date: isDate(u.start_date), due_date: isDate(u.due_date) }));
+    const parsed = response.parsed_output;
+    const plan = sanitizePlan({ actions: toActions(parsed, ctx), unmatched: parsed.not_understood }, ctx);
     return NextResponse.json({ plan, ai: true });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Mucho uso en este momento, probá en un minuto." }, { status: 429 });
+      return NextResponse.json({ error: "Mucho uso en este momento, probá en un minuto.", fallback: true }, { status: 429 });
     }
     if (err instanceof Anthropic.APIError) {
       console.error("voice: Claude API", err.status, err.message);
-      return NextResponse.json({ error: "El asistente no respondió. Probá de nuevo." }, { status: 502 });
+      return NextResponse.json({ error: "El asistente no respondió.", fallback: true }, { status: 502 });
     }
     throw err;
   }

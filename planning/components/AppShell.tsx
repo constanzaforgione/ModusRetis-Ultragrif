@@ -7,6 +7,7 @@ import { Avatar } from "./ui";
 import { Iso } from "./Logo";
 import { HoverLayer } from "./HoverLayer";
 import { NotificationsMenu } from "./NotificationsMenu";
+import { useVoice, VoiceProvider } from "./VoiceDialog";
 import { alertsFor } from "@/lib/alerts";
 import { ROLE_LABEL } from "@/lib/types";
 import { hasPerson } from "@/lib/people";
@@ -81,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <>
+    <VoiceProvider>
       <header className="topbar">
         <div className="topbar-in">
           <Link href="/tareas" className="brand">
@@ -108,6 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               {dark ? "☀" : "☾"}
             </button>
+            <VoiceButton />
             <NotificationsMenu />
             <div className="who">
               <b>{me.full_name || me.email}</b>
@@ -124,6 +126,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="main">{loading ? <div className="empty">Cargando…</div> : children}</main>
       <HoverLayer />
-    </>
+    </VoiceProvider>
+  );
+}
+
+/** Dictado por voz desde cualquier pantalla; el destino es lo que esté abierto (proyecto o cliente) */
+function VoiceButton() {
+  const { open } = useVoice();
+  return (
+    <button className="iconbtn voice-btn" onClick={() => open()} aria-label="Dictar tareas por voz" title="Dictar: tareas, proyectos y cambios">
+      🎙
+    </button>
   );
 }

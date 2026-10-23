@@ -211,7 +211,7 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 .card .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
 /* ---------- drawer / modal ---------- */
-.scrim { position: fixed; inset: 0; background: rgba(13, 18, 32, 0.45); z-index: 50; display: flex; justify-content: flex-end; }
+.scrim { position: fixed; inset: 0; background: rgba(13, 18, 32, 0.45); z-index: 65; display: flex; justify-content: flex-end; }
 .scrim.center { justify-content: center; align-items: flex-start; padding: 6vh 16px 16px; overflow-y: auto; }
 .drawer { width: min(560px, 100%); height: 100%; background: var(--surface); box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .modal { width: min(640px, 100%); background: var(--surface); border-radius: var(--r-md); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: 88vh; }
@@ -224,6 +224,7 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 .with-mic { position: relative; }
 .with-mic .btn { position: absolute; right: 6px; bottom: 6px; }
 .meta-line { font-size: 12px; color: var(--muted); }
+.meta-line.warn { color: var(--st-bloqueada-fg); font-weight: 600; }
 
 /* panel lateral (no tapa la pantalla) */
 .side { position: fixed; top: 61px; right: 0; bottom: 0; z-index: 40; width: min(520px, 100%); background: var(--surface); border-left: 1px solid var(--border); box-shadow: -12px 0 30px rgba(17, 24, 39, 0.1); display: flex; flex-direction: column; }
@@ -240,6 +241,8 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 .mini-list > button:hover { background: var(--surface2); }
 .mini-list > .mini-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; align-items: center; padding: 9px 10px; border-top: 1px solid var(--grid); background: var(--surface); font-size: 13px; }
 .mini-list > .mini-row:first-child { border-top: 0; }
+.mini-list > .mini-sep { padding: 6px 10px; border-top: 1px solid var(--grid); background: var(--surface2); font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.mini-list > .mini-sep:first-child { border-top: 0; }
 .mini-list > .mini-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-list > .mini-row.done .t { text-decoration: line-through; color: var(--muted); }
 .mini-list > button span.t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -470,6 +473,12 @@ select.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primar
 .g-wkcell { display: flex; flex-direction: column; gap: 3px; padding: 2px 4px; min-width: 0; }
 .g-wkcell .cal-chip { font-size: 11px; }
 .g-more { font-size: 11px; color: var(--muted); font-weight: 600; padding-left: 4px; }
+button.g-more { border: 0; background: none; text-align: left; cursor: pointer; padding: 2px 4px; }
+.g-proj { position: relative; z-index: 1; padding-bottom: 4px; }
+.g-proj + .g-proj { margin-top: 2px; }
+.g-proj .g-wk { margin-top: 0; }
+.g-rest { margin-top: 4px; border-top: 1px dashed var(--grid); padding-top: 4px; }
+.g-sub { font-size: 10.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 6px 2px; position: sticky; left: 0; }
 .g-label b .avatar { margin-right: 2px; }
 .chip .avatar { margin-left: -4px; }
 

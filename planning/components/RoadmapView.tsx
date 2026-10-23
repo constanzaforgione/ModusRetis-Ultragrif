@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useData } from "./DataProvider";
 import { Avatar, Avatars, CLIENT_COLORS, Modal, namesOf, PeoplePicker, shortNames, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
+import { useVoice } from "./VoiceDialog";
 import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permissions";
 import { addDays, addMonths, diffDays, fmtMonth, fmtShort, startOfMonth, startOfWeek } from "@/lib/dates";
 import { projectProgress, progressLabel } from "@/lib/progress";
@@ -26,6 +27,7 @@ const SPANS: { key: string; label: string; unit: Unit; n: number }[] = [
 ];
 const defaultFrom = (unit: Unit, today: string) => (unit === "w" ? addDays(startOfWeek(today), -7) : addMonths(startOfMonth(today), -1));
 const MAX_CHIPS = 3;
+const PRIORITY_RANK = { baja: 0, media: 1, alta: 2, urgente: 3 } as const;
 
 export function RoadmapView() {
   const { me, clients, projects, tasks, profiles, today, byId } = useData();
@@ -71,6 +73,15 @@ export function RoadmapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects.length]);
   const backProject = returnTo ? (projects.find((p) => p.id === returnTo.id) ?? returnTo) : null;
+  // Con un proyecto abierto, el dictado (botón 🎙 de arriba) agrega ahí por defecto
+  const voice = useVoice();
+  const scopeId = editProject?.id ?? null;
+  const scopeClient = editProject?.client_id ?? null;
+  useEffect(() => {
+    voice.setScope(scopeId ? { project_id: scopeId, client_id: scopeClient } : only.size === 1 && groupBy === "cliente" ? { client_id: [...only][0] } : null);
+    return () => voice.setScope(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeId, scopeClient, only, groupBy]);
 
   const weekly = span.unit === "w";
   const to = weekly ? addDays(from, span.n * 7) : addMonths(from, span.n);
@@ -172,6 +183,54 @@ export function RoadmapView() {
           };
         });
 
+
+  // Tareas abiertas debajo de su proyecto, en la columna (semana o mes) de su vencimiento
+  const placeOf = (t: Task) => t.due_date ?? t.start_date;
+  const colsTemplate = cols.map((c) => `minmax(0, ${(pct(colEnd(c)) - pct(c)).toFixed(3)}fr)`).join(" ");
+  const taskGrid = (list: Task[], onUndated: (() => void) | null) => {
+    const undated = list.filter((t) => !placeOf(t)).length;
+    const dated = list.filter((t) => placeOf(t) && placeOf(t)! >= from && placeOf(t)! < to);
+    if (!dated.length && !undated) return null;
+    return (
+      <div className="g-wk" style={{ gridTemplateColumns: colsTemplate }}>
+        {cols.map((w, i) => {
+          const end = colEnd(w);
+          const cell = dated
+            .filter((t) => placeOf(t)! >= w && placeOf(t)! < end)
+            .sort((a, b) => placeOf(a)!.localeCompare(placeOf(b)!) || PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority]);
+          return (
+            <div key={w} className="g-wkcell">
+              {i === 0 && undated > 0 &&
+                (onUndated ? (
+                  <button className="g-more link" onClick={onUndated} title="Ver en el proyecto">
+                    {undated} sin fecha
+                  </button>
+                ) : (
+                  <span className="g-more">{undated} sin fecha</span>
+                ))}
+              {cell.slice(0, MAX_CHIPS).map((t) => {
+                const c = t.client_id ? byId.client.get(t.client_id) : undefined;
+                const late = t.due_date && t.due_date < today;
+                return (
+                  <button
+                    key={t.id}
+                    className={`cal-chip ${late ? "late" : ""}`}
+                    style={{ borderLeftColor: c?.color ?? "var(--border)" }}
+                    onClick={() => setOpenTask(t)}
+                    data-hover-task={t.id}
+                  >
+                    <span className="t">{t.title}</span>
+                    {groupBy === "cliente" && span.n <= 6 && <Avatars people={taskPeople(t).map((id) => byId.profile.get(id))} sm max={2} />}
+                  </button>
+                );
+              })}
+              {cell.length > MAX_CHIPS && <span className="g-more">+{cell.length - MAX_CHIPS} más</span>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const toggleOnly = (id: string) =>
     setOnly((s) => {
@@ -309,59 +368,39 @@ export function RoadmapView() {
                   const r = pct(p.end_date);
                   const ownerNames = namesOf(owners(p).map((id) => byId.profile.get(id)), "");
                   const pr = projectProgress(p.id, tasks);
+                  const own = (groupBy === "cliente" ? tasks : row.tasks).filter((t) => t.project_id === p.id && t.status !== "hecha");
                   return (
-                    <button
-                      key={p.id}
-                      className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""} ${editProject?.id === p.id ? "sel" : ""}`}
-                      style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: color, color: textOn(color) }}
-                      onClick={() => setEditProject(p)}
-                      data-hover-project={p.id}
-                      aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${pr.done} de ${pr.total} tareas hechas${ownerNames ? `, ${ownerNames}` : ""}`}
-                    >
-                      <span className="fill" style={{ width: `${pr.pct}%` }} />
-                      <span className="lbl-in">
-                        {groupBy === "colaborador" && c ? `${c.name} · ` : ""}
-                        {p.name} · {progressLabel(pr)}
-                      </span>
-                    </button>
+                    <div key={p.id} className="g-proj">
+                      <button
+                        className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""} ${editProject?.id === p.id ? "sel" : ""}`}
+                        style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: color, color: textOn(color) }}
+                        onClick={() => setEditProject(p)}
+                        data-hover-project={p.id}
+                        aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${pr.done} de ${pr.total} tareas hechas${ownerNames ? `, ${ownerNames}` : ""}`}
+                      >
+                        <span className="fill" style={{ width: `${pr.pct}%` }} />
+                        <span className="lbl-in">
+                          {groupBy === "colaborador" && c ? `${c.name} · ` : ""}
+                          {p.name} · {progressLabel(pr)}
+                        </span>
+                      </button>
+                      {taskGrid(own, () => setEditProject(p))}
+                    </div>
                   );
                 })}
-                {weekly && (
-                  // Vista por semana: las tareas de cada semana (por vencimiento) debajo de los proyectos
-                  <div className="g-wk" style={{ gridTemplateColumns: `repeat(${span.n}, minmax(0, 1fr))` }}>
-                    {cols.map((w) => {
-                      const end = colEnd(w);
-                      const list = row.tasks
-                        .filter((t) => {
-                          const d = t.due_date ?? t.start_date;
-                          return d && d >= w && d < end;
-                        })
-                        .sort((a, b) => Number(a.status === "hecha") - Number(b.status === "hecha"));
-                      return (
-                        <div key={w} className="g-wkcell">
-                          {list.slice(0, MAX_CHIPS).map((t) => {
-                            const c = t.client_id ? byId.client.get(t.client_id) : undefined;
-                            const late = t.status !== "hecha" && t.due_date && t.due_date < today;
-                            return (
-                              <button
-                                key={t.id}
-                                className={`cal-chip ${t.status === "hecha" ? "done" : ""} ${late ? "late" : ""}`}
-                                style={{ borderLeftColor: c?.color ?? "var(--border)" }}
-                                onClick={() => setOpenTask(t)}
-                                data-hover-task={t.id}
-                              >
-                                <span className="t">{t.title}</span>
-                                {groupBy === "cliente" && <Avatars people={taskPeople(t).map((id) => byId.profile.get(id))} sm max={2} />}
-                              </button>
-                            );
-                          })}
-                          {list.length > MAX_CHIPS && <span className="g-more">+{list.length - MAX_CHIPS} más</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {!row.projects.length && !weekly && <div className="g-empty">Sin proyectos en este período</div>}
+                {(() => {
+                  // Tareas sin proyecto (o de un proyecto fuera del período), al final de la fila
+                  const shown = new Set(row.projects.map((p) => p.id));
+                  const rest = row.tasks.filter((t) => t.status !== "hecha" && !(t.project_id && shown.has(t.project_id)));
+                  const dated = rest.filter((t) => placeOf(t) && placeOf(t)! >= from && placeOf(t)! < to);
+                  if (!dated.length) return !row.projects.length ? <div className="g-empty">Sin proyectos ni tareas en este período</div> : null;
+                  return (
+                    <div className="g-proj g-rest">
+                      <div className="g-sub">{row.projects.length ? "Otras tareas" : "Tareas sin proyecto"}</div>
+                      {taskGrid(dated, null)}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ))}
@@ -375,7 +414,7 @@ export function RoadmapView() {
       <div className="legend">
         <span>La zona más clara de cada barra es el avance: tareas hechas sobre el total del proyecto.</span>
         <span>Rayada = en pausa · Transparente = completado</span>
-        {weekly && <span>Debajo de cada fila: las tareas de esa semana (por vencimiento).</span>}
+        <span>Debajo de cada proyecto, sus tareas abiertas en la {weekly ? "semana" : "columna"} en que vencen. Las hechas se ven al abrir el proyecto.</span>
       </div>
 
       <div className="cards" hidden={groupBy !== "cliente"}>
@@ -526,10 +565,20 @@ function ProjectDialog({
   onOpenTask: (t: TaskDraft) => void;
 }) {
   const { me, clients, profiles, tasks, save, remove, toast, byId } = useData();
+  const voice = useVoice();
   const staff = isStaff(me);
   const [f, setF] = useState<Partial<Project>>({ client_id: clients.find((c) => c.active)?.id, ...project });
   const isNew = !project.id;
+  // Si el proyecto cambia mientras está abierto (p. ej. por un dictado), el formulario se pone al día
+  const live = useData().projects.find((p) => p.id === project.id);
+  useEffect(() => {
+    if (live) setF((x) => ({ ...x, name: live.name, status: live.status, start_date: live.start_date, end_date: live.end_date, client_id: live.client_id }));
+  }, [live?.name, live?.status, live?.start_date, live?.end_date, live?.client_id]); // eslint-disable-line react-hooks/exhaustive-deps
   const linked = tasks.filter((t) => t.project_id && t.project_id === project.id);
+  // Abiertas primero (las que vencen antes, arriba); las cerradas siempre al final
+  const byDue = (a: Task, b: Task) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || a.title.localeCompare(b.title);
+  const open = linked.filter((t) => t.status !== "hecha").sort(byDue);
+  const closed = linked.filter((t) => t.status === "hecha").sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
   // Quienes tienen tareas en el proyecto son responsables sí o sí; el resto se elige a mano
   const fromTasks = useMemo(() => [...new Set(linked.flatMap(taskPeople))], [linked]);
   const [owners, setOwners] = useState<string[]>(() => (project.id ? projectPeople(project as Project, tasks) : []));
@@ -657,70 +706,71 @@ function ProjectDialog({
           </span>
           {linked.length > 0 && (
             <div className="mini-list">
-              {[...linked]
-                .sort((a, b) => Number(a.status === "hecha") - Number(b.status === "hecha"))
-                .map((t) => {
+              {[...open, ...closed].map((t, i) => {
                   const done = t.status === "hecha";
                   const editable = canEditTask(me, t, profiles);
                   const who = taskPeople(t);
                   return (
-                    <div key={t.id} className={`mini-row ${done ? "done" : ""}`} data-hover-task={t.id}>
-                      <button
-                        className={`check ${done ? "on" : ""}`}
-                        disabled={!editable}
-                        title={editable ? (done ? "Reabrir" : "Marcar como hecha") : "Solo la persona asignada o su líder"}
-                        onClick={() => toggleDone(t)}
-                      >
-                        {done ? "✓" : ""}
-                      </button>
-                      <button className="link t" onClick={() => onOpenTask(t)} title="Abrir la tarea">
-                        {t.title}
-                      </button>
-                      <div className="mini-ctrls">
-                        {editable ? (
-                          <>
-                            <select
-                              value={t.status}
-                              onChange={(e) => quickSave(t, { status: e.target.value as Task["status"] })}
-                              className={`pill s-${t.status}`}
-                              aria-label="Estado"
-                            >
-                              {STATUS.map((s) => (
-                                <option key={s.key} value={s.key}>
-                                  {s.label}
-                                </option>
-                              ))}
-                            </select>
-                            {who.length === 1 ? (
-                              <select value={t.assignee_id} onChange={(e) => quickSave(t, { assignee_id: e.target.value, assignee_ids: [e.target.value] })} aria-label="Responsable">
-                                {(() => {
-                                  const list = assignableProfiles(me, profiles);
-                                  const cur = profiles.find((p) => p.id === t.assignee_id);
-                                  return (cur && !list.includes(cur) ? [cur, ...list] : list).map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      {p.full_name}
-                                      {p.id === me.id ? " (yo)" : ""}
-                                    </option>
-                                  ));
-                                })()}
+                    <Fragment key={t.id}>
+                      {i === open.length && <div className="mini-sep">Cerradas ({closed.length})</div>}
+                      <div className={`mini-row ${done ? "done" : ""}`} data-hover-task={t.id}>
+                        <button
+                          className={`check ${done ? "on" : ""}`}
+                          disabled={!editable}
+                          title={editable ? (done ? "Reabrir" : "Marcar como hecha") : "Solo la persona asignada o su líder"}
+                          onClick={() => toggleDone(t)}
+                        >
+                          {done ? "✓" : ""}
+                        </button>
+                        <button className="link t" onClick={() => onOpenTask(t)} title="Abrir la tarea">
+                          {t.title}
+                        </button>
+                        <div className="mini-ctrls">
+                          {editable ? (
+                            <>
+                              <select
+                                value={t.status}
+                                onChange={(e) => quickSave(t, { status: e.target.value as Task["status"] })}
+                                className={`pill s-${t.status}`}
+                                aria-label="Estado"
+                              >
+                                {STATUS.map((s) => (
+                                  <option key={s.key} value={s.key}>
+                                    {s.label}
+                                  </option>
+                                ))}
                               </select>
-                            ) : (
-                              <button className="link mini-people" onClick={() => onOpenTask(t)} title={`${namesOf(who.map((id) => byId.profile.get(id)))} · abrir para cambiar`}>
+                              {who.length === 1 ? (
+                                <select value={t.assignee_id} onChange={(e) => quickSave(t, { assignee_id: e.target.value, assignee_ids: [e.target.value] })} aria-label="Responsable">
+                                  {(() => {
+                                    const list = assignableProfiles(me, profiles);
+                                    const cur = profiles.find((p) => p.id === t.assignee_id);
+                                    return (cur && !list.includes(cur) ? [cur, ...list] : list).map((p) => (
+                                      <option key={p.id} value={p.id}>
+                                        {p.full_name}
+                                        {p.id === me.id ? " (yo)" : ""}
+                                      </option>
+                                    ));
+                                  })()}
+                                </select>
+                              ) : (
+                                <button className="link mini-people" onClick={() => onOpenTask(t)} title={`${namesOf(who.map((id) => byId.profile.get(id)))} · abrir para cambiar`}>
+                                  <Avatars people={who.map((id) => byId.profile.get(id))} sm />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
+                              <span className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
                                 <Avatars people={who.map((id) => byId.profile.get(id))} sm />
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <span className={`pill s-${t.status}`}>{STATUS.find((s) => s.key === t.status)?.label}</span>
-                            <span className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                              <Avatars people={who.map((id) => byId.profile.get(id))} sm />
-                              {shortNames(who.map((id) => byId.profile.get(id)))}
-                            </span>
-                          </>
-                        )}
+                                {shortNames(who.map((id) => byId.profile.get(id)))}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    </Fragment>
                   );
                 })}
             </div>
@@ -728,6 +778,9 @@ function ProjectDialog({
           <div>
             <button className="btn sm" onClick={() => onOpenTask({ client_id: project.client_id, project_id: project.id })}>
               + Tarea en este proyecto
+            </button>{" "}
+            <button className="btn sm cyan" onClick={() => voice.open({ project_id: project.id, client_id: project.client_id })} title="Dictar tareas o cambios para este proyecto">
+              🎙 Dictar
             </button>
           </div>
         </div>
