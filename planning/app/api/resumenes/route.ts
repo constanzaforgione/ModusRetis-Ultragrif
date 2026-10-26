@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   if (!cfg) return NextResponse.json({ error: "missing_config" }, { status: 503 });
   try {
     const all = buildSummaries(await fetchSummaryPages(fetch, cfg));
-    // Los resúmenes que vienen de tareas (WEGA) traen la facturación con la tarifa de cada colaborador: solo admins
+    // Los resúmenes que vienen de tareas pueden traer facturación con la tarifa de cada colaborador: solo admins
     const summaries = me.role === "admin" ? all : all.filter((x) => !x.key.startsWith("task:"));
     return NextResponse.json({ summaries, at: new Date().toISOString() });
   } catch (e) {

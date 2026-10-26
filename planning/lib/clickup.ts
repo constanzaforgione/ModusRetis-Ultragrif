@@ -7,8 +7,8 @@ const V3 = "https://api.clickup.com/api/v3";
 
 /** Docs que pueden tener resúmenes: "Resumen de avance", "Revisión Kumi"… */
 const DOC_NAME = /resum|revisi|informe|reporte/i;
-/** Tareas cuyas subtareas son resúmenes mensuales ("Resúmen Mayo 2026 WEGA") */
-const DEFAULT_PARENT_TASKS = ["86b6wur96"]; // WEGA, en Planificación Consultora
+/** Tareas cuyas subtareas son resúmenes mensuales (opcional, con CLICKUP_SUMMARY_TASKS) */
+const DEFAULT_PARENT_TASKS: string[] = [];
 
 type Fetcher = typeof fetch;
 
@@ -111,7 +111,7 @@ export async function fetchSummaryPages(http: Fetcher, cfg: ClickUpConfig): Prom
     }
   }
 
-  // 3. Tareas de resumen (subtareas de una tarea por cliente, como WEGA)
+  // 3. Tareas de resumen (subtareas de una tarea por cliente), si se configuraron
   for (const parentId of cfg.parentTasks) {
     try {
       const parent = await get<{ name: string; subtasks?: { id: string; name: string }[] }>(http, cfg, `${V2}/task/${parentId}?include_subtasks=true`);

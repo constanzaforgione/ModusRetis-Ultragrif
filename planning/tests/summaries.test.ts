@@ -88,8 +88,8 @@ test("lee docs y tareas de ClickUp", async () => {
         { id: "P1", name: "Resumen de avance - Julio 2026", content: "## Detalle de trabajos realizados (18 horas)\n* Tienda oficial", date_created: 1786105649427, date_updated: 1788183250185 },
         { id: "P2", name: "🔑 Credenciales de acceso", content: "Contraseña: x", date_created: 1786105649427 },
       ]);
-    if (/\/task\/W\?include_subtasks/.test(url)) return json({ name: "WEGA", subtasks: [{ id: "T1", name: "Resúmen Mayo 2026 WEGA" }, { id: "T2", name: "Llamar al cliente" }] });
-    if (/\/task\/T1\?/.test(url)) return json({ id: "T1", name: "Resúmen Mayo 2026 WEGA", markdown_description: "* Reunión mensual", date_created: "1784032541166", date_updated: "1784032541166", url: "https://app.clickup.com/t/T1" });
+    if (/\/task\/W\?include_subtasks/.test(url)) return json({ name: "KUMI", subtasks: [{ id: "T1", name: "Resúmen Mayo 2026 KUMI" }, { id: "T2", name: "Llamar al cliente" }] });
+    if (/\/task\/T1\?/.test(url)) return json({ id: "T1", name: "Resúmen Mayo 2026 KUMI", markdown_description: "* Reunión mensual", date_created: "1784032541166", date_updated: "1784032541166", url: "https://app.clickup.com/t/T1" });
     return new Response("{}", { status: 404 });
   }) as typeof fetch;
   const pages = await fetchSummaryPages(http, { token: "pk_1", workspace: "900", parentTasks: ["W"] });
@@ -99,7 +99,7 @@ test("lee docs y tareas de ClickUp", async () => {
     s.map((x) => [x.client, x.month, x.hours, x.url]),
     [
       ["Ultragrif", "2026-07", 18, "https://app.clickup.com/900/docs/D1/P1"],
-      ["WEGA", "2026-05", null, "https://app.clickup.com/t/T1"],
+      ["KUMI", "2026-05", null, "https://app.clickup.com/t/T1"],
     ],
   );
 });
@@ -112,4 +112,13 @@ test("limpia menciones y escapes de ClickUp", () => {
   assert.equal(clickupClean("[@Mauricio Barrio](#user_mention#67350014) hola | \\-36,79% | \\+ IVA"), "@Mauricio Barrio hola | -36,79% | + IVA");
   assert.equal(clickupClean("[@Ana](#user_mention#1) [@Leo](#user_mention#2)\n# Título"), "\n# Título");
   assert.equal(plainPreview("[@Lytton](#user_mention#1)\n# **Resumen mensual - Julio 2026**\n*   Ventas \\-5%"), "Ventas -5%");
+});
+
+test("los resúmenes de WEGA no se muestran", () => {
+  const r = buildSummaries([
+    raw("Resúmen Mayo 2026 WEGA", { key: "task:T1", client: "WEGA" }),
+    raw("Resumen de avance - Mayo 2026", { client: "Wega" }),
+    raw("Resumen de avance - Mayo 2026", { client: "Ultragrif" }),
+  ]);
+  assert.deepEqual(r.map((x) => x.client), ["Ultragrif"]);
 });

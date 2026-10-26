@@ -38,6 +38,9 @@ const norm = (s: string) =>
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
 
+/** Clientes cuyos resúmenes no se muestran en la app */
+export const HIDDEN_CLIENTS = /\bwega\b/;
+
 /** Páginas que nunca se muestran, aunque estén en el mismo doc */
 export const SENSITIVE = /credencial|contrase|password|clave|acceso|login|usuarios?\b/;
 
@@ -83,6 +86,7 @@ export function redact(content: string) {
 export function buildSummaries(raw: RawPage[]): SummaryPage[] {
   const groups = new Map<string, RawPage[]>();
   for (const p of raw) {
+    if (HIDDEN_CLIENTS.test(norm(p.client)) || HIDDEN_CLIENTS.test(norm(p.name))) continue;
     if (!isMonthlySummary(p.name)) continue;
     const month = monthOf(p.name, p.created);
     if (!month) continue;
@@ -114,7 +118,7 @@ export function buildSummaries(raw: RawPage[]): SummaryPage[] {
 /** "003- PLACEBO AMOBLAMIENTOS" → "Placebo Amoblamientos" */
 export function clientFromFolder(folder: string) {
   const s = folder.replace(/^\s*\d+\s*[-–.)]\s*/, "").trim();
-  // Siglas cortas ("WEGA") quedan como están; el resto en mayúsculas pasa a "Placebo Amoblamientos"
+  // Siglas cortas ("KUMI") quedan como están; el resto en mayúsculas pasa a "Placebo Amoblamientos"
   if (s !== s.toUpperCase() || /^\p{L}{2,4}$/u.test(s)) return s;
   return s.toLowerCase().replace(/(^|\s)\p{L}/gu, (c) => c.toUpperCase());
 }
