@@ -692,3 +692,4 @@ select.person-add { width: auto; border-style: dashed; color: var(--primary); fo
 .bar.drop-bar { outline: 3px dashed var(--ink); outline-offset: 2px; }
 .sum-text { min-height: 360px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.55; }
 .sum-preview { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; min-height: 200px; max-height: 60vh; overflow: auto; }
+.sum-auto { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }

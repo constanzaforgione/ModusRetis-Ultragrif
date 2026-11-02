@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { SidePanel } from "./ui";
 import { Markdown, plainPreview } from "./Markdown";
-import { matchClient, monthLabel, summaryDraft, type SummaryPage } from "@/lib/summaries";
+import { matchClient, monthLabel, summaryDraft, summaryTasks, type SummaryPage } from "@/lib/summaries";
 import { isStaff, canDelete } from "@/lib/permissions";
 import { timeAgo } from "@/lib/notifications";
 
@@ -273,10 +273,8 @@ export function SummariesView() {
           onOpenExisting={(x) => (setDraft(null), setOpen(x))}
           buildDraft={() => {
             const c = byId.client.get(draft.client_id);
-            const done = tasks
-              .filter((t) => t.client_id === draft.client_id && t.status === "hecha" && (t.completed_at ?? t.due_date ?? "").slice(0, 7) === draft.month)
-              .map((t) => ({ title: t.title, project: t.project_id ? (projects.find((p) => p.id === t.project_id)?.name ?? null) : null }));
-            return summaryDraft(c?.name ?? "", draft.month, done);
+            const t = summaryTasks(tasks, projects, draft.client_id, draft.month);
+            return { text: summaryDraft(c?.name ?? "", draft.month, t), counts: t };
           }}
         />
       )}
@@ -371,11 +369,21 @@ function SummaryEditor({
   onClose: () => void;
   existing?: SummaryPage;
   onOpenExisting: (x: SummaryPage) => void;
-  buildDraft: () => string;
+  buildDraft: () => { text: string; counts: { done: unknown[]; doing: unknown[]; next: unknown[] } };
 }) {
   const { clients } = useData();
   const [preview, setPreview] = useState(false);
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
+  // Un resumen nuevo se arma solo con las tareas del planning de ese cliente y mes (mientras no se haya escrito encima)
+  const [auto, setAuto] = useState<{ text: string; done: number; doing: number; next: number } | null>(null);
+  useEffect(() => {
+    if (draft.id || !draft.client_id || !/^\d{4}-\d{2}$/.test(draft.month)) return;
+    if (draft.content.trim() && draft.content !== auto?.text) return;
+    const d = buildDraft();
+    setAuto({ text: d.text, done: d.counts.done.length, doing: d.counts.doing.length, next: d.counts.next.length });
+    setDraft({ ...draft, content: d.text });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.client_id, draft.month]);
   return (
     <SidePanel
       title={draft.id ? "Editar resumen" : "Nuevo resumen"}
@@ -443,17 +451,25 @@ function SummaryEditor({
           Se escribe en Markdown: <code>##</code> títulos, <code>*</code> viñetas, <code>**negrita**</code>. Las horas se toman del título “(18 horas)”.
         </div>
       </div>
-      {!draft.id && draft.client_id && draft.month && (
-        <div>
+      {draft.client_id && draft.month && (
+        <div className="sum-auto">
+          {auto && !draft.id && (
+            <span className="meta-line">
+              Armado con las tareas del planning de {clients.find((c) => c.id === draft.client_id)?.name} en {monthLabel(draft.month)}: {auto.done}{" "}
+              {auto.done === 1 ? "cerrada" : "cerradas"}, {auto.doing} en curso y {auto.next} {auto.next === 1 ? "pendiente" : "pendientes"}.
+            </span>
+          )}
           <button
             className="btn sm"
             onClick={() => {
-              if (draft.content.trim() && !confirm("¿Reemplazar lo escrito por el borrador?")) return;
-              set({ content: buildDraft() });
+              if (draft.content.trim() && draft.content !== auto?.text && !confirm("¿Reemplazar lo escrito por el armado con las tareas del mes?")) return;
+              const d = buildDraft();
+              setAuto({ text: d.text, done: d.counts.done.length, doing: d.counts.doing.length, next: d.counts.next.length });
+              set({ content: d.text });
               setPreview(false);
             }}
           >
-            ✨ Armar borrador con las tareas cerradas del mes
+            ↻ Volver a armar con las tareas del mes
           </button>
         </div>
       )}

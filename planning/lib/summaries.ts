@@ -148,10 +148,18 @@ export function clientFromFolder(folder: string) {
   return s.toLowerCase().replace(/(^|\s)\p{L}/gu, (c) => c.toUpperCase());
 }
 
-/** Une el nombre de ClickUp con un cliente de la app ("Placebo Amoblamientos" → "Placebo") */
+/** Une el nombre de ClickUp con un cliente de la app ("Placebo Amoblamientos" → "Placebo").
+ *  Un cliente de la app con varios nombres ("Placebo / Confort Iván") junta a todos. */
 export function matchClient<T extends { name: string }>(clickupName: string, clients: T[]): T | undefined {
   const n = norm(clickupName);
-  return clients.find((c) => n.includes(norm(c.name))) ?? clients.find((c) => norm(c.name).includes(n));
+  if (!n) return undefined;
+  const parts = (c: T) => norm(c.name).split(/\s*(?:\/|\||\+|&|,|\by\b)\s*/).filter((x) => x.length >= 3);
+  return (
+    clients.find((c) => norm(c.name) === n) ??
+    clients.find((c) => n.includes(norm(c.name))) ??
+    clients.find((c) => norm(c.name).includes(n)) ??
+    clients.find((c) => parts(c).length > 1 && parts(c).some((x) => n.includes(x) || x.includes(n)))
+  );
 }
 
 export const monthLabel = (m: string) => `${MONTH_NAME[Number(m.slice(5))]} ${m.slice(0, 4)}`;
@@ -171,7 +179,13 @@ export function copiesToSave(live: SummaryPage[], stored: StoredSummary[]) {
 }
 
 /** La lista que se ve: lo guardado en la app más lo de ClickUp que todavía no tiene copia */
-export function mergeSummaries(stored: StoredSummary[], live: SummaryPage[], clientName: (id: string | null) => string | null): SummaryPage[] {
+export function mergeSummaries(
+  stored: StoredSummary[],
+  live: SummaryPage[],
+  clientName: (id: string | null) => string | null,
+  /** Cliente de la app para un nombre de ClickUp (así "Placebo Amoblamientos" va con "Placebo / Confort Iván") */
+  appClient: (name: string) => { id: string; name: string } | undefined = () => undefined,
+): SummaryPage[] {
   const liveByKey = new Map(live.map((p) => [p.key, p]));
   const out: SummaryPage[] = stored
     .filter((s) => !HIDDEN_CLIENTS.test(norm(clientName(s.client_id) ?? s.client_name)))
@@ -195,24 +209,61 @@ export function mergeSummaries(stored: StoredSummary[], live: SummaryPage[], cli
       };
     });
   const copied = new Set(stored.map((s) => s.clickup_key).filter(Boolean));
-  for (const p of live) if (!copied.has(p.key)) out.push({ ...p, source: "clickup", id: null });
+  for (const p of live) {
+    if (copied.has(p.key)) continue;
+    const c = appClient(p.client);
+    out.push({ ...p, source: "clickup", id: null, ...(c ? { client: c.name, client_id: c.id } : {}) });
+  }
   return out.sort((a, b) => b.month.localeCompare(a.month) || a.client.localeCompare(b.client));
 }
 
-/** Plantilla de un resumen nuevo, con las tareas cerradas del mes agrupadas por proyecto */
-export function summaryDraft(client: string, month: string, done: { title: string; project: string | null }[]) {
+// ---------------------------------------------------------------- borrador con las tareas del planning
+interface PlanTask {
+  title: string;
+  status: string;
+  client_id: string | null;
+  project_id: string | null;
+  start_date: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  updated_at?: string | null;
+}
+
+/** Las tareas del planning que van al resumen de un cliente y mes: las de ese cliente o de sus proyectos */
+export function summaryTasks<T extends PlanTask>(tasks: T[], projects: { id: string; name: string; client_id: string }[], clientId: string, month: string) {
+  const proj = new Map(projects.map((p) => [p.id, p]));
+  const mine = tasks.filter((t) => t.client_id === clientId || (t.project_id && proj.get(t.project_id)?.client_id === clientId));
+  const m = (d: string | null | undefined) => (d ?? "").slice(0, 7);
+  const item = (t: T) => ({ title: t.title, project: t.project_id ? (proj.get(t.project_id)?.name ?? null) : null });
+  const done = mine.filter((t) => t.status === "hecha" && m(t.completed_at ?? t.due_date ?? t.start_date) === month);
+  // En curso: se trabajaron en el mes y siguen abiertas
+  const doing = mine.filter(
+    (t) => ["en_curso", "en_revision", "bloqueada"].includes(t.status) && (m(t.start_date ?? t.due_date ?? t.updated_at) <= month || m(t.updated_at) === month),
+  );
+  // Próximos pasos: lo pendiente que vence después del mes (o sin fecha)
+  const next = mine.filter((t) => t.status === "pendiente" && (!t.due_date || m(t.due_date) > month || m(t.due_date) === month)).slice(0, 12);
+  return { done: done.map(item), doing: doing.map(item), next: next.map(item) };
+}
+
+const byProject = (list: { title: string; project: string | null }[], other = "Otras tareas") => {
   const groups = new Map<string, string[]>();
-  for (const t of done) groups.set(t.project ?? "Otras tareas", [...(groups.get(t.project ?? "Otras tareas") ?? []), t.title]);
-  const body = [...groups].map(([g, list]) => `### ${g}\n${list.map((x) => `* ${x}`).join("\n")}`).join("\n\n");
+  for (const t of list) groups.set(t.project ?? other, [...(groups.get(t.project ?? other) ?? []), t.title]);
+  // Primero los proyectos, al final las sueltas
+  return [...groups].sort(([a], [b]) => Number(a === other) - Number(b === other)).map(([g, items]) => `### ${g}\n${items.map((x) => `* ${x}`).join("\n")}`).join("\n\n");
+};
+
+/** Borrador de un resumen nuevo: lo hecho en el mes por proyecto, lo que sigue en curso y los próximos pasos */
+export function summaryDraft(client: string, month: string, t: ReturnType<typeof summaryTasks>) {
   return [
     `# Resumen de avance - ${monthLabel(month)} · ${client}`,
     "",
     "## Detalle de trabajos realizados ( horas)",
     "",
-    body || "* ",
+    byProject(t.done) || "* ",
+    ...(t.doing.length ? ["", "## En curso", "", byProject(t.doing)] : []),
     "",
     "## Próximos pasos",
     "",
-    "* ",
+    t.next.length ? t.next.map((x) => `* ${x.title}${x.project ? ` (${x.project})` : ""}`).join("\n") : "* ",
   ].join("\n");
 }

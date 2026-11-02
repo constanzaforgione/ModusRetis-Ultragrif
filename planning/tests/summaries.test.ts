@@ -1,7 +1,7 @@
 // Resúmenes mensuales desde ClickUp (lib/summaries.ts y lib/clickup.ts), con los nombres reales de las páginas.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSummaries, clientFromFolder, copiesToSave, hoursOf, isMonthlySummary, matchClient, mergeSummaries, monthOf, redact, summaryDraft, type RawPage, type StoredSummary } from "../lib/summaries";
+import { buildSummaries, clientFromFolder, copiesToSave, hoursOf, isMonthlySummary, matchClient, mergeSummaries, monthOf, redact, summaryDraft, summaryTasks, type RawPage, type StoredSummary } from "../lib/summaries";
 import { fetchSummaryPages, sendSummaryPage, summaryDocFor } from "../lib/clickup";
 import { clickupClean, plainPreview } from "../components/Markdown";
 
@@ -162,14 +162,36 @@ test("la lista junta lo de la app con lo de ClickUp sin repetir", () => {
   );
 });
 
-test("borrador con las tareas cerradas del mes", () => {
-  const d = summaryDraft("Ultragrif", "2026-10", [
-    { title: "Cargar catálogo", project: "Catálogo Mercado Libre" },
-    { title: "Llamar al cliente", project: null },
-    { title: "Publicar ofertas", project: "Catálogo Mercado Libre" },
-  ]);
-  assert.match(d, /^# Resumen de avance - Octubre 2026 · Ultragrif/);
+test("el resumen se arma con las tareas del planning de ese cliente (y de sus proyectos)", () => {
+  const t = (title: string, p: Partial<Parameters<typeof summaryTasks>[0][number]>) => ({ title, status: "hecha", client_id: "pc", project_id: null, start_date: null, due_date: null, completed_at: null, updated_at: null, ...p });
+  const tasks = [
+    t("Cargar catálogo", { project_id: "p1", completed_at: "2026-10-10T12:00:00Z" }),
+    t("Publicar ofertas", { project_id: "p1", client_id: null, completed_at: "2026-10-20T12:00:00Z" }), // sin cliente, pero del proyecto de Placebo
+    t("Llamar al cliente", { completed_at: "2026-10-05T12:00:00Z" }),
+    t("De septiembre", { completed_at: "2026-09-28T12:00:00Z" }),
+    t("De otro cliente", { client_id: "ug", completed_at: "2026-10-10T12:00:00Z" }),
+    t("Campaña Black Friday", { status: "en_curso", start_date: "2026-10-25" }),
+    t("Fotos de diciembre", { status: "pendiente", due_date: "2026-11-15" }),
+  ];
+  const r = summaryTasks(tasks, [{ id: "p1", name: "Catálogo Mercado Libre", client_id: "pc" }], "pc", "2026-10");
+  assert.deepEqual(r.done.map((x) => x.title), ["Cargar catálogo", "Publicar ofertas", "Llamar al cliente"]);
+  assert.deepEqual(r.doing.map((x) => x.title), ["Campaña Black Friday"]);
+  assert.deepEqual(r.next.map((x) => x.title), ["Fotos de diciembre"]);
+  const d = summaryDraft("Placebo / Confort Iván", "2026-10", r);
+  assert.match(d, /^# Resumen de avance - Octubre 2026 · Placebo \/ Confort Iván/);
   assert.match(d, /### Catálogo Mercado Libre\n\* Cargar catálogo\n\* Publicar ofertas\n\n### Otras tareas\n\* Llamar al cliente/);
+  assert.match(d, /## En curso\n\n### Otras tareas\n\* Campaña Black Friday/);
+  assert.match(d, /## Próximos pasos\n\n\* Fotos de diciembre/);
+});
+
+test("un cliente de la app con dos nombres junta los resúmenes de los dos", () => {
+  const clients = [{ name: "Placebo / Confort Iván" }, { name: "Ultragrif" }];
+  assert.equal(matchClient("Placebo Amoblamientos", clients)?.name, "Placebo / Confort Iván");
+  assert.equal(matchClient("Confort Ivan", clients)?.name, "Placebo / Confort Iván");
+  assert.equal(matchClient("Ultragrif", clients)?.name, "Ultragrif");
+  assert.equal(matchClient("Kumi Deco", clients), undefined);
+  // Si existe el cliente solo, gana ese
+  assert.equal(matchClient("Confort Iván", [...clients, { name: "Confort Iván" }])?.name, "Confort Iván");
 });
 
 test("mandar a ClickUp: crea la página en el doc del cliente o la actualiza", async () => {

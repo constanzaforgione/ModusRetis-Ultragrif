@@ -63,7 +63,7 @@ export async function GET(req: Request) {
   if (me.role !== "admin") stored = stored.filter((s) => !s.clickup_key?.startsWith("task:"));
 
   const nameOf = (id: string | null) => (id ? (clients ?? []).find((c) => c.id === id)?.name ?? null : null);
-  return NextResponse.json({ summaries: mergeSummaries(stored, live, nameOf), at: new Date().toISOString(), clickupError, clickup: !!cfg });
+  return NextResponse.json({ summaries: mergeSummaries(stored, live, nameOf, (n) => matchClient(n, clients ?? [])), at: new Date().toISOString(), clickupError, clickup: !!cfg });
 }
 
 interface SaveBody {
