@@ -5,6 +5,7 @@ import { Avatars, ClientTag, shortNames } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { useVoice } from "./VoiceDialog";
 import { useMeetings } from "./MeetingImportDialog";
+import { TaskExportDialog } from "./TaskExportDialog";
 import { CalendarView } from "./CalendarView";
 import { canEditTask, isStaff, teamIds } from "@/lib/permissions";
 import { taskPeople } from "@/lib/people";
@@ -30,6 +31,7 @@ export function TasksView() {
   const [open, setOpen] = useState<TaskDraft | null>(null);
   const voice = useVoice();
   const meetings = useMeetings();
+  const [exporting, setExporting] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<TaskStatus | null>(null);
 
@@ -142,6 +144,9 @@ export function TasksView() {
               {meetings.checking ? "Leyendo Granola…" : "📝 De reuniones"}
             </button>
           )}
+          <button className="btn" onClick={() => setExporting(true)} title="Exportar tareas por período, colaboradores y cliente para armar un resumen con Claude">
+            ⇩ Exportar
+          </button>
           <button className="btn cyan" onClick={() => voice.open(client ? { client_id: client } : {})}>
             🎙 Dictar
           </button>
@@ -378,6 +383,7 @@ export function TasksView() {
       )}
 
       {open && <TaskDrawer key={open.id ?? "nueva"} task={open} onClose={() => setOpen(null)} />}
+      {exporting && <TaskExportDialog onClose={() => setExporting(false)} initial={client ? { client_id: client } : undefined} />}
     </>
   );
 }
