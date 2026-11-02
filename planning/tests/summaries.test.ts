@@ -1,8 +1,8 @@
 // Resúmenes mensuales desde ClickUp (lib/summaries.ts y lib/clickup.ts), con los nombres reales de las páginas.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSummaries, clientFromFolder, hoursOf, isMonthlySummary, matchClient, monthOf, redact, type RawPage } from "../lib/summaries";
-import { fetchSummaryPages } from "../lib/clickup";
+import { buildSummaries, clientFromFolder, copiesToSave, hoursOf, isMonthlySummary, matchClient, mergeSummaries, monthOf, redact, summaryDraft, type RawPage, type StoredSummary } from "../lib/summaries";
+import { fetchSummaryPages, sendSummaryPage, summaryDocFor } from "../lib/clickup";
 import { clickupClean, plainPreview } from "../components/Markdown";
 
 test("qué páginas son resúmenes mensuales y cuáles nunca se muestran", () => {
@@ -121,4 +121,80 @@ test("los resúmenes de WEGA no se muestran", () => {
     raw("Resumen de avance - Mayo 2026", { client: "Ultragrif" }),
   ]);
   assert.deepEqual(r.map((x) => x.client), ["Ultragrif"]);
+});
+
+const stored = (p: Partial<StoredSummary>): StoredSummary => ({
+  id: "s1", client_id: "ug", client_name: "Ultragrif", month: "2026-10", title: "Resumen de avance - Octubre 2026", content: "## Detalle (10 horas)",
+  hours: 10, source: "app", clickup_key: null, clickup_url: "", edited: false, sent_at: null, updated_at: "2026-11-02T10:00:00Z", ...p,
+});
+
+test("copias de ClickUp en la app: nuevas y cambiadas, nunca las editadas acá", () => {
+  const live = buildSummaries([
+    raw("Resumen de avance - Septiembre 2026", { key: "doc:d:a", client: "Ultragrif", content: "* nuevo" }),
+    raw("Resumen de avance - Agosto 2026", { key: "doc:d:b", client: "Ultragrif", content: "* cambió" }),
+    raw("Resumen de avance - Julio 2026", { key: "doc:d:c", client: "Ultragrif", content: "* cambió en ClickUp" }),
+  ]);
+  const { insert, update } = copiesToSave(live, [
+    stored({ id: "b", source: "clickup", clickup_key: "doc:d:b", month: "2026-08", title: "Resumen de avance - Agosto 2026", content: "* viejo" }),
+    stored({ id: "c", source: "clickup", clickup_key: "doc:d:c", month: "2026-07", edited: true, content: "* editado en la app" }),
+  ]);
+  assert.deepEqual(insert.map((p) => p.key), ["doc:d:a"]);
+  assert.deepEqual(update.map((u) => u.id), ["b"]);
+});
+
+test("la lista junta lo de la app con lo de ClickUp sin repetir", () => {
+  const live = buildSummaries([
+    raw("Resumen de avance - Septiembre 2026", { key: "doc:d:a", client: "Ultragrif" }),
+    raw("Resumen de avance - Agosto 2026", { key: "doc:d:b", client: "Ultragrif" }),
+  ]);
+  const list = mergeSummaries(
+    [stored({}), stored({ id: "b", source: "clickup", clickup_key: "doc:d:b", month: "2026-08" }), stored({ id: "w", client_id: null, client_name: "WEGA" })],
+    live,
+    (id) => (id === "ug" ? "Ultragrif" : null),
+  );
+  assert.deepEqual(
+    list.map((x) => [x.month, x.id, x.source]),
+    [
+      ["2026-10", "s1", "app"],
+      ["2026-09", null, "clickup"],
+      ["2026-08", "b", "clickup"],
+    ],
+  );
+});
+
+test("borrador con las tareas cerradas del mes", () => {
+  const d = summaryDraft("Ultragrif", "2026-10", [
+    { title: "Cargar catálogo", project: "Catálogo Mercado Libre" },
+    { title: "Llamar al cliente", project: null },
+    { title: "Publicar ofertas", project: "Catálogo Mercado Libre" },
+  ]);
+  assert.match(d, /^# Resumen de avance - Octubre 2026 · Ultragrif/);
+  assert.match(d, /### Catálogo Mercado Libre\n\* Cargar catálogo\n\* Publicar ofertas\n\n### Otras tareas\n\* Llamar al cliente/);
+});
+
+test("mandar a ClickUp: crea la página en el doc del cliente o la actualiza", async () => {
+  assert.equal(
+    summaryDocFor(
+      [
+        raw("Resumen de avance - Agosto 2026", { key: "doc:D1:p1", client: "Ultragrif", updated: "2026-09-01T00:00:00Z" }),
+        raw("Resumen de avance - Septiembre 2026", { key: "doc:D2:p2", client: "Placebo Amoblamientos", updated: "2026-10-01T00:00:00Z" }),
+      ],
+      "Placebo",
+    ),
+    "D2",
+  );
+  const calls: { url: string; method?: string; body: Record<string, unknown> }[] = [];
+  const http = (async (u: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(u), method: init?.method, body: JSON.parse(String(init?.body)) });
+    return new Response(JSON.stringify({ id: "P9" }), { status: 200 });
+  }) as typeof fetch;
+  const cfg = { token: "pk_1", workspace: "900", parentTasks: [] };
+  const made = await sendSummaryPage(http, cfg, { docId: "D2", pageId: null, name: "Resumen de avance - Octubre 2026", content: "* hola" });
+  assert.deepEqual(made, { key: "doc:D2:P9", url: "https://app.clickup.com/900/docs/D2/P9" });
+  assert.equal(calls[0].method, "POST");
+  assert.equal(calls[0].url, "https://api.clickup.com/api/v3/workspaces/900/docs/D2/pages");
+  assert.equal(calls[0].body.content_format, "text/md");
+  await sendSummaryPage(http, cfg, { docId: "D2", pageId: "P9", name: "x", content: "y" });
+  assert.equal(calls[1].method, "PUT");
+  assert.match(calls[1].url, /\/pages\/P9$/);
 });

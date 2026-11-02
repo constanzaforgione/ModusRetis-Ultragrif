@@ -14,6 +14,31 @@ export interface SummaryPage {
   updated: string;
   /** Otras versiones del mismo mes (borradores, "v2", "completo") */
   versions: { name: string; url: string; updated: string }[];
+  /** Guardado en la base de la app (id de monthly_summaries) */
+  id?: string | null;
+  client_id?: string | null;
+  /** app: escrito en la app · clickup: escrito en ClickUp */
+  source?: "app" | "clickup";
+  /** Está (o se mandó) en ClickUp */
+  clickup_key?: string | null;
+  sent_at?: string | null;
+}
+
+/** Fila de monthly_summaries */
+export interface StoredSummary {
+  id: string;
+  client_id: string | null;
+  client_name: string;
+  month: string;
+  title: string;
+  content: string;
+  hours: number | null;
+  source: "app" | "clickup";
+  clickup_key: string | null;
+  clickup_url: string;
+  edited: boolean;
+  sent_at: string | null;
+  updated_at: string;
 }
 
 export interface RawPage {
@@ -130,3 +155,64 @@ export function matchClient<T extends { name: string }>(clickupName: string, cli
 }
 
 export const monthLabel = (m: string) => `${MONTH_NAME[Number(m.slice(5))]} ${m.slice(0, 4)}`;
+
+// ---------------------------------------------------------------- resúmenes guardados en la app
+/** Copias que hay que guardar en la app de lo que está en ClickUp: los nuevos y los que cambiaron (si no se editaron acá) */
+export function copiesToSave(live: SummaryPage[], stored: StoredSummary[]) {
+  const byKey = new Map(stored.filter((x) => x.clickup_key).map((x) => [x.clickup_key!, x]));
+  const insert: SummaryPage[] = [];
+  const update: { id: string; page: SummaryPage }[] = [];
+  for (const p of live) {
+    const s = byKey.get(p.key);
+    if (!s) insert.push(p);
+    else if (!s.edited && s.source === "clickup" && (s.content !== p.content || s.title !== p.name)) update.push({ id: s.id, page: p });
+  }
+  return { insert, update };
+}
+
+/** La lista que se ve: lo guardado en la app más lo de ClickUp que todavía no tiene copia */
+export function mergeSummaries(stored: StoredSummary[], live: SummaryPage[], clientName: (id: string | null) => string | null): SummaryPage[] {
+  const liveByKey = new Map(live.map((p) => [p.key, p]));
+  const out: SummaryPage[] = stored
+    .filter((s) => !HIDDEN_CLIENTS.test(norm(clientName(s.client_id) ?? s.client_name)))
+    .map((s) => {
+      const l = s.clickup_key ? liveByKey.get(s.clickup_key) : undefined;
+      return {
+        key: `app:${s.id}`,
+        id: s.id,
+        client_id: s.client_id,
+        client: clientName(s.client_id) ?? s.client_name,
+        name: s.title || `Resumen de avance - ${monthLabel(s.month)}`,
+        month: s.month,
+        hours: s.hours ?? hoursOf(s.content),
+        content: s.content,
+        url: s.clickup_url,
+        updated: s.updated_at,
+        versions: l?.versions ?? [],
+        source: s.source,
+        clickup_key: s.clickup_key,
+        sent_at: s.sent_at,
+      };
+    });
+  const copied = new Set(stored.map((s) => s.clickup_key).filter(Boolean));
+  for (const p of live) if (!copied.has(p.key)) out.push({ ...p, source: "clickup", id: null });
+  return out.sort((a, b) => b.month.localeCompare(a.month) || a.client.localeCompare(b.client));
+}
+
+/** Plantilla de un resumen nuevo, con las tareas cerradas del mes agrupadas por proyecto */
+export function summaryDraft(client: string, month: string, done: { title: string; project: string | null }[]) {
+  const groups = new Map<string, string[]>();
+  for (const t of done) groups.set(t.project ?? "Otras tareas", [...(groups.get(t.project ?? "Otras tareas") ?? []), t.title]);
+  const body = [...groups].map(([g, list]) => `### ${g}\n${list.map((x) => `* ${x}`).join("\n")}`).join("\n\n");
+  return [
+    `# Resumen de avance - ${monthLabel(month)} · ${client}`,
+    "",
+    "## Detalle de trabajos realizados ( horas)",
+    "",
+    body || "* ",
+    "",
+    "## Próximos pasos",
+    "",
+    "* ",
+  ].join("\n");
+}

@@ -690,3 +690,5 @@ select.person-add { width: auto; border-style: dashed; color: var(--primary); fo
 .cal-chip.dragging, .cal-block.dragging { opacity: 0.4; }
 .cal-chip[draggable="true"], .cal-block[draggable="true"] { cursor: grab; }
 .bar.drop-bar { outline: 3px dashed var(--ink); outline-offset: 2px; }
+.sum-text { min-height: 360px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.55; }
+.sum-preview { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; min-height: 200px; max-height: 60vh; overflow: auto; }

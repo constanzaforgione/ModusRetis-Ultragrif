@@ -137,3 +137,43 @@ export async function fetchSummaryPages(http: Fetcher, cfg: ClickUpConfig): Prom
   }
   return out;
 }
+
+// ---------------------------------------------------------------- escribir en ClickUp
+/** Doc de resúmenes de un cliente: el del resumen más reciente de ese cliente */
+export function summaryDocFor(pages: RawPage[], client: string): string | null {
+  const n = client.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const mine = pages
+    .filter((p) => p.key.startsWith("doc:"))
+    .filter((p) => {
+      const c = p.client.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      return c.includes(n) || n.includes(c);
+    })
+    .sort((a, b) => b.updated.localeCompare(a.updated));
+  return mine[0]?.key.split(":")[1] ?? null;
+}
+
+/** Crea la página del resumen en el doc del cliente, o la actualiza si ya se mandó antes */
+export async function sendSummaryPage(
+  http: Fetcher,
+  cfg: ClickUpConfig,
+  p: { docId: string; pageId: string | null; name: string; content: string },
+): Promise<{ key: string; url: string }> {
+  const base = `${V3}/workspaces/${cfg.workspace}/docs/${p.docId}/pages`;
+  const res = await http(p.pageId ? `${base}/${p.pageId}` : base, {
+    method: p.pageId ? "PUT" : "POST",
+    headers: { Authorization: cfg.token, "Content-Type": "application/json" },
+    body: JSON.stringify(
+      p.pageId
+        ? { name: p.name, content: p.content, content_format: "text/md", content_edit_mode: "replace" }
+        : { name: p.name, content: p.content, content_format: "text/md" },
+    ),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`ClickUp respondió ${res.status}${body ? `: ${body.slice(0, 160)}` : ""}`);
+  }
+  const page = p.pageId ? { id: p.pageId } : ((await res.json().catch(() => ({}))) as { id?: string });
+  if (!page.id) throw new Error("ClickUp no devolvió la página creada");
+  return { key: `doc:${p.docId}:${page.id}`, url: `https://app.clickup.com/${cfg.workspace}/docs/${p.docId}/${page.id}` };
+}
