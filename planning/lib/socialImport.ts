@@ -435,7 +435,7 @@ export function jsToJson(src: string, consts: Map<string, unknown> = new Map()):
       else if (["true", "false", "null"].includes(word)) out += word;
       else if (word === "undefined") out += "null";
       else if (nx.c === "(") {
-        // R(), R(0, "Día libre") → null: no se ejecuta código
+        // R(), R(0, "Día libre") → null: no se ejecuta código. Pegada a un texto ("Link: " + L("x")) → "" para no perder el texto
         let depth = 0;
         let q: string | null = null;
         let k = nx.k;
@@ -448,7 +448,8 @@ export function jsToJson(src: string, consts: Map<string, unknown> = new Map()):
           else if (ch === "(") depth++;
           else if (ch === ")" && --depth === 0) break;
         }
-        out += "null";
+        const glued = /\+\s*$/.test(out) || nextChar(k + 1).c === "+";
+        out += glued ? '""' : "null";
         i = k + 1;
         continue;
       } else if (consts.has(word)) out += JSON.stringify(consts.get(word));
@@ -561,6 +562,7 @@ const DATA_KEYS: [RegExp, Field | "formats" | "skip", string?][] = [
   [/^(creative|creatividad|arte|visual|direccion de arte|brief)$/, "brief"],
   [/^(concept|concepto|idea central)$/, "brief", "Concepto"],
   [/^(dev|desarrollo|script|slides|placas|escenas)$/, "brief", "Desarrollo"],
+  [/^(stories|historias|secuencia|secuencia de stories)$/, "brief", "Stories"],
   [/^(prod|produccion|material de produccion)$/, "notes", "Producción"],
   [/^(chan|channel|canal destino|link a|destino)$/, "notes", "Link a"],
   [/^(objective|objetivo|goal)$/, "pillar", "Objetivo"],
@@ -915,7 +917,19 @@ function docContext(doc: Document, fallbackYear: number): Ctx {
   return { year: y ? +y[1] : fallbackYear, month: mo ? MONTHS[mo[1]] : null };
 }
 
-export function parseSocialCalendar(doc: Document, opts: { clients: string[]; fileName?: string; year?: number }): ImportResult {
+/** Piezas de los datos que dejó el script del calendario al correrlo (ver runCalendarScripts en el diálogo) */
+function fromValues(values: unknown[], ctx: Ctx): ImportedPiece[] {
+  let best: ImportedPiece[] = [];
+  for (const v of values) {
+    const pieces = piecesFromData(v, ctx, values).filter((p) => p.date);
+    if (pieces.length > best.length) best = pieces;
+  }
+  return best;
+}
+const weight = (list: ImportedPiece[]) => list.length * 100_000 + list.reduce((n, p) => n + p.copy.length + p.brief.length + p.notes.length, 0);
+
+/** `ran`: los datos del calendario después de correr su script (lo que no se puede leer sin ejecutarlo) */
+export function parseSocialCalendar(doc: Document, opts: { clients: string[]; fileName?: string; year?: number; ran?: unknown[] }): ImportResult {
   const ctx = docContext(doc, opts.year ?? new Date().getFullYear());
   const title = doc.title || doc.querySelector("title")?.textContent || "";
   const heads = norm([(opts.fileName ?? "").replace(/[_-]+/g, " "), title, ...[...doc.querySelectorAll("h1, h2, header")].slice(0, 6).map((e) => e.textContent ?? "")].join(" "));
@@ -923,6 +937,10 @@ export function parseSocialCalendar(doc: Document, opts: { clients: string[]; fi
 
   let method: ImportResult["method"] = null;
   let pieces = fromScripts(doc, ctx);
+  if (opts.ran?.length) {
+    const r = fromValues(opts.ran, ctx);
+    if (weight(r) > weight(pieces)) pieces = r;
+  }
   if (pieces.length) method = "script";
   if (!pieces.length) {
     const t = fromTables(doc, ctx);

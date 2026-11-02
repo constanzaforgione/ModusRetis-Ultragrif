@@ -7,6 +7,7 @@ import { Modal } from "./ui";
 import { NetBadges } from "./NetBadges";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { norm, parseSocialCalendar, type ImportedPiece, type ImportResult } from "@/lib/socialImport";
+import { runCalendarScripts } from "@/lib/socialRun";
 import { FORMATS, NETWORKS, POST_STATUS } from "@/lib/social";
 import { fmtShort } from "@/lib/dates";
 import type { Network, PostFormat, PostStatus } from "@/lib/types";
@@ -46,10 +47,14 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
       return { ...r, dup, on: r.on && !dup };
     });
 
-  function analyze() {
+  async function analyze() {
     if (!html.trim()) return toast("Elegí un archivo o pegá el HTML", true);
+    setBusy(true);
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const res = parseSocialCalendar(doc, { clients: socialClients.map((c) => c.name), fileName });
+    // Lo que el script del calendario arma al correr (aislado de la app)
+    const ran = await runCalendarScripts(html).catch(() => []);
+    setBusy(false);
+    const res = parseSocialCalendar(doc, { clients: socialClients.map((c) => c.name), fileName, ran });
     setResult(res);
     const cid = clientId || socialClients.find((c) => c.name === res.client)?.id || (socialClients.length === 1 ? socialClients[0].id : "");
     setClientId(cid);
@@ -115,8 +120,8 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
               <button className="btn" onClick={onClose}>
                 Cancelar
               </button>
-              <button className="btn primary" onClick={analyze} disabled={!html.trim()}>
-                Leer calendario
+              <button className="btn primary" onClick={analyze} disabled={!html.trim() || busy}>
+                {busy ? "Leyendo…" : "Leer calendario"}
               </button>
             </div>
           </>

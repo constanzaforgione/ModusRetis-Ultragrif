@@ -214,3 +214,33 @@ n:"HOOK: ¿Trabajás con mil pestañas abiertas?"},
   assert.match(r.pieces[2].brief, /^Guion: HOOK/);
   assert.match(r.pieces[2].notes, /Intención: Conversión\nFecha original: 2026-10-29\nPrioridad: Medio\nRecursos: Canva y Capcut/);
 });
+
+test("datos armados con funciones del propio script: R(), ST(…) y \"texto\" + L(…)", () => {
+  const html = `<title>Confort Ivan · Noviembre 2026</title><h1>Noviembre 2026</h1><script>
+const U = "https://confortivan.com.ar/productos/";
+const L = (path, txt) => \`<a href="\${U}\${path}/">\${txt||U+path+"/"}</a>\`;
+const R = (label) => ({ rest:true, label:label||"Descanso" });
+const ST = (tag, txt) => \`<span class="tag">\${tag}</span><br>\${txt}\`;
+const data = {
+  1:R("Sin publicación"),
+  2:{ f:["st"], cyber:true, product:"Cyber Monday · Día 1: mesas", objective:"Comercial / Venta",
+      concept:"Abrir el Cyber con las mesas.",
+      stories:[ ST("Story 1","Apertura"), ST("Story 2","Mesa 140 x 80. Sticker de link: "+L("mesa-140")) ],
+      prod:"Plantilla C2." },
+  6:{ f:["carr","st"], product:"Guía de mesas", dev:["<b>Slide 1:</b> portada", "Stories: link "+L("mesas")], copy:"Mesa para 4 o 6 🍽️\\n\\n#MesaDeComedor #ConfortIvan", prod:"Fotos de la web." }
+};
+</script>`;
+  // Sin correr el script: se leen igual los días, aunque las stories armadas con funciones quedan afuera
+  const r = parse(html, "Confort_Ivan___Noviembre_2026.html");
+  assert.equal(r.method, "script");
+  assert.deepEqual(r.pieces.map((p) => [p.date, p.format, p.title]), [
+    ["2026-11-02", "historia", "Cyber Monday · Día 1: mesas"],
+    ["2026-11-06", "carrusel", "Guía de mesas"],
+  ]);
+  assert.match(r.pieces[1].brief, /Slide 1:/);
+  assert.match(r.pieces[1].brief, /Stories: link/);
+  // Con lo que deja el script al correrlo (en la app, en un iframe aislado) entran también las stories
+  const ran = [{ 1: { rest: true, label: "Sin publicación" }, 2: { f: ["st"], product: "Cyber Monday · Día 1: mesas", concept: "Abrir el Cyber con las mesas.", stories: ['<span class="tag">Story 1</span><br>Apertura', '<span class="tag">Story 2</span><br>Mesa 140 x 80. Sticker de link: <a href="https://confortivan.com.ar/productos/mesa-140/">https://confortivan.com.ar/productos/mesa-140/</a>'] }, 6: { f: ["carr", "st"], product: "Guía de mesas", copy: "Mesa para 4 o 6" } }];
+  const r2 = parseSocialCalendar(parseHTML(wrap(html)).document, { clients: CLIENTS, fileName: "Confort_Ivan___Noviembre_2026.html", year: 2026, ran });
+  assert.match(r2.pieces.find((p) => p.date === "2026-11-02").brief, /Stories:\n• Story 1\nApertura\n• Story 2\nMesa 140 x 80\. Sticker de link: https:\/\/confortivan\.com\.ar\/productos\/mesa-140\//);
+});
