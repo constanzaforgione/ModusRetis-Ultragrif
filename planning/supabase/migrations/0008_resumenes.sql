@@ -4,7 +4,7 @@
 -- monthly_summaries  los resúmenes de cada cliente y mes. Se escriben en la app y, si se quiere,
 --                    se mandan a ClickUp. Los que se escribieron en ClickUp también se copian acá
 --                    (por las dudas), salvo que después se hayan editado en la app.
--- Permisos: todos ven; admins y líderes escriben; borra solo un admin.
+-- Permisos: todos ven (menos los que vienen de tareas, solo admins); admins y líderes escriben; borra solo un admin.
 
 create table if not exists public.monthly_summaries (
   id uuid primary key default gen_random_uuid(),
@@ -36,7 +36,9 @@ drop policy if exists summaries_read on public.monthly_summaries;
 drop policy if exists summaries_insert on public.monthly_summaries;
 drop policy if exists summaries_update on public.monthly_summaries;
 drop policy if exists summaries_delete on public.monthly_summaries;
-create policy summaries_read on public.monthly_summaries for select to authenticated using (true);
+-- Los que vienen de tareas de ClickUp (task:…) pueden traer facturación con la tarifa de cada colaborador: solo admins
+create policy summaries_read on public.monthly_summaries for select to authenticated
+  using (clickup_key is null or clickup_key not like 'task:%' or public.my_role() = 'admin');
 create policy summaries_insert on public.monthly_summaries for insert to authenticated with check (public.is_staff());
 create policy summaries_update on public.monthly_summaries for update to authenticated using (public.is_staff()) with check (public.is_staff());
 create policy summaries_delete on public.monthly_summaries for delete to authenticated using (public.my_role() = 'admin');
