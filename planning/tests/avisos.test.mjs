@@ -19,7 +19,7 @@ async function setup() {
     create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
-  for (const f of ["migrations/0001_init.sql", "migrations/0002_horarios_repeticion_asignacion.sql", "migrations/0003_avisos.sql", "migrations/0004_varios_responsables.sql", "seed.sql"]) await db.exec(read(f));
+  for (const f of ["migrations/0001_init.sql", "migrations/0002_horarios_repeticion_asignacion.sql", "migrations/0003_avisos.sql", "migrations/0004_varios_responsables.sql", "migrations/0009_avisos_varias_tareas.sql", "migrations/0009_avisos_varias_tareas.sql", "seed.sql"]) await db.exec(read(f));
   await db.exec(`
     grant usage on schema public, auth to authenticated;
     grant all on all tables in schema public to authenticated;
@@ -87,6 +87,9 @@ test("proyectos: responsable, cambios y tareas nuevas en el proyecto", async () 
   assert.equal((await notes(db, MEMBER)).length, before);
   await as(db, OTHER, `insert into public.tasks (title, assignee_id, created_by, project_id) values ('Alertas', $1, $1, $2)`, [OTHER, p]);
   assert.ok((await notes(db, MEMBER)).some((x) => x.kind === "tarea_en_proyecto" && /Maxi sumó «Alertas» a tu proyecto/.test(x.message)));
+  // Varias tareas nuevas en el mismo proyecto el mismo día (p. ej. al importar de una reunión): un aviso por tarea, sin error
+  await as(db, OTHER, `insert into public.tasks (title, assignee_id, created_by, project_id) values ('Informe', $1, $1, $2), ('Presentación', $1, $1, $2)`, [OTHER, p]);
+  assert.equal((await notes(db, MEMBER)).filter((x) => x.kind === "tarea_en_proyecto").length, 3);
 });
 
 test("avisos del día: vence hoy, venció ayer y proyectos, sin duplicar", async () => {
