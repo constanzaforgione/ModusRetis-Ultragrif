@@ -674,3 +674,19 @@ select.person-add { width: auto; border-style: dashed; color: var(--primary); fo
 .md table { border-collapse: collapse; font-size: 13px; }
 .md th, .md td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
 .md th { background: var(--surface2); }
+
+/* Pop-up de tareas desde reuniones */
+.mtg { display: flex; flex-direction: column; gap: 8px; }
+.mtg + .mtg { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.mtg-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.mtg-proj { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mini-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mini-field > span { font-size: 10.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.mini-field select, .mini-field input { width: 100%; }
+@media (max-width: 620px) { .mtg-proj { grid-template-columns: 1fr; } }
+
+/* Arrastrar tareas */
+.drop-over { background: var(--now) !important; outline: 2px dashed var(--primary); outline-offset: -2px; }
+.cal-chip.dragging, .cal-block.dragging { opacity: 0.4; }
+.cal-chip[draggable="true"], .cal-block[draggable="true"] { cursor: grab; }
+.bar.drop-bar { outline: 3px dashed var(--ink); outline-offset: 2px; }

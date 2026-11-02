@@ -4,6 +4,7 @@ import { useData } from "./DataProvider";
 import { Avatars, ClientTag, shortNames } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { useVoice } from "./VoiceDialog";
+import { useMeetings } from "./MeetingImportDialog";
 import { CalendarView } from "./CalendarView";
 import { canEditTask, isStaff, teamIds } from "@/lib/permissions";
 import { taskPeople } from "@/lib/people";
@@ -28,6 +29,7 @@ export function TasksView() {
   const [hideDone, setHideDone] = useState(true);
   const [open, setOpen] = useState<TaskDraft | null>(null);
   const voice = useVoice();
+  const meetings = useMeetings();
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<TaskStatus | null>(null);
 
@@ -135,6 +137,11 @@ export function TasksView() {
           </div>
         </div>
         <div className="actions">
+          {meetings.enabled && (
+            <button className="btn" onClick={meetings.check} disabled={meetings.checking} title="Traer los puntos de acción de tus reuniones MR de Granola">
+              {meetings.checking ? "Leyendo Granola…" : "📝 De reuniones"}
+            </button>
+          )}
           <button className="btn cyan" onClick={() => voice.open(client ? { client_id: client } : {})}>
             🎙 Dictar
           </button>

@@ -9,6 +9,8 @@ import { addDays, addMonths, dayName, fmtMonth, fmtShort, hhmm, startOfMonth, st
 import type { Task } from "@/lib/types";
 import type { TaskDraft } from "./TaskDrawer";
 import { taskPeople } from "@/lib/people";
+import { canEditTask } from "@/lib/permissions";
+import { movePatch, type MoveTarget } from "@/lib/moveTask";
 
 const FIRST_HOUR = 7;
 const LAST_HOUR = 21;
@@ -21,7 +23,47 @@ const minutes = (t: string) => {
 };
 
 export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task[]; onOpen: (t: Task) => void; onNew: (t: TaskDraft) => void; selectedId?: string }) {
-  const { today, byId } = useData();
+  const { today, byId, me, profiles, save, toast } = useData();
+  // Arrastrar una tarea a otro día (o a otro horario en la semana)
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const dragProps = (t: Task) =>
+    canEditTask(me, t, profiles)
+      ? {
+          draggable: true,
+          onDragStart: (e: React.DragEvent) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", t.id);
+            setDragId(t.id);
+          },
+          onDragEnd: () => {
+            setDragId(null);
+            setOver(null);
+          },
+        }
+      : {};
+  const dropProps = (key: string, target: (e: React.DragEvent) => MoveTarget) =>
+    dragId
+      ? {
+          onDragOver: (e: React.DragEvent) => {
+            e.preventDefault();
+            if (over !== key) setOver(key);
+          },
+          onDrop: async (e: React.DragEvent) => {
+            e.preventDefault();
+            const t = tasks.find((x) => x.id === dragId);
+            const to = target(e);
+            setDragId(null);
+            setOver(null);
+            const patch = t && movePatch(t, to);
+            if (!t || !patch) return;
+            const { error } = await save<Task>("tasks", { id: t.id, ...patch });
+            if (error) toast(error, true);
+            else toast(`«${t.title}» pasó al ${fmtShort(to.date)}${patch.start_time ? ` a las ${hhmm(patch.start_time)}` : ""}`);
+          },
+        }
+      : {};
+  const dropClass = (key: string) => (dragId && over === key ? "drop-over" : "");
   const [mode, setMode] = useState<"semana" | "mes">("semana");
   const [anchor, setAnchor] = useState(today);
   const [mobile, setMobile] = useState(false);
@@ -64,7 +106,8 @@ export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task
     return (
       <button
         key={t.id}
-        className={`cal-chip ${t.status === "hecha" ? "done" : ""} ${late ? "late" : ""} ${selectedId === t.id ? "sel" : ""}`}
+        className={`cal-chip ${t.status === "hecha" ? "done" : ""} ${late ? "late" : ""} ${selectedId === t.id ? "sel" : ""} ${dragId === t.id ? "dragging" : ""}`}
+        {...dragProps(t)}
         style={{ borderLeftColor: c?.color ?? "var(--border)" }}
         onClick={(e) => {
           e.stopPropagation();
@@ -117,7 +160,8 @@ export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task
             return (
               <div
                 key={d}
-                className={`cal-cell ${d.slice(0, 7) !== monthStart.slice(0, 7) ? "out" : ""} ${d === today ? "today" : ""} ${weekday(d) > 4 ? "we" : ""}`}
+                className={`cal-cell ${d.slice(0, 7) !== monthStart.slice(0, 7) ? "out" : ""} ${d === today ? "today" : ""} ${weekday(d) > 4 ? "we" : ""} ${dropClass(`m${d}`)}`}
+                {...dropProps(`m${d}`, () => ({ date: d }))}
                 onClick={() => onNew({ due_date: d })}
                 title="Clic en un espacio libre para crear una tarea ese día"
               >
@@ -172,7 +216,7 @@ export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task
           <div className="cal-allday">
             <div className="cal-hlabel">Todo el día</div>
             {days.map((d) => (
-              <div key={d} className="cal-adcell" onClick={() => onNew({ due_date: d })}>
+              <div key={d} className={`cal-adcell ${dropClass(`a${d}`)}`} onClick={() => onNew({ due_date: d })} {...dropProps(`a${d}`, () => ({ date: d, time: null }))}>
                 {(byDay.get(d) ?? []).filter((t) => !t.start_time).map((t) => chip(t, true))}
               </div>
             ))}
@@ -201,7 +245,12 @@ export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task
               return (
                 <div
                   key={d}
-                  className={`cal-col ${d === today ? "today" : ""} ${weekday(d) > 4 ? "we" : ""}`}
+                  className={`cal-col ${d === today ? "today" : ""} ${weekday(d) > 4 ? "we" : ""} ${dropClass(`w${d}`)}`}
+                  {...dropProps(`w${d}`, (e) => {
+                    const y = e.clientY - (e.currentTarget as HTMLElement).getBoundingClientRect().top;
+                    const m = Math.max(0, Math.round(((y / HOUR_PX) * 60) / 15) * 15) + FIRST_HOUR * 60;
+                    return { date: d, time: `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:00` };
+                  })}
                   onClick={(e) => {
                     const y = e.clientY - (e.currentTarget as HTMLElement).getBoundingClientRect().top;
                     const h = Math.min(LAST_HOUR - 1, FIRST_HOUR + Math.floor(y / HOUR_PX));
@@ -220,7 +269,8 @@ export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task
                     return (
                       <button
                         key={t.id}
-                        className={`cal-block ${height < 40 ? "short" : ""} ${t.status === "hecha" ? "done" : ""} ${selectedId === t.id ? "sel" : ""}`}
+                        className={`cal-block ${height < 40 ? "short" : ""} ${t.status === "hecha" ? "done" : ""} ${selectedId === t.id ? "sel" : ""} ${dragId === t.id ? "dragging" : ""}`}
+                        {...dragProps(t)}
                         style={{
                           top: Math.max(0, top),
                           height,
@@ -251,7 +301,7 @@ export function CalendarView({ tasks, onOpen, onNew, selectedId }: { tasks: Task
           </div>
         </div>
       )}
-      <div className="meta-line">Tocá un espacio libre para crear una tarea en ese día y horario.</div>
+      <div className="meta-line">Tocá un espacio libre para crear una tarea en ese día y horario. Arrastrá una tarea para pasarla a otro día u horario.</div>
     </div>
   );
 }

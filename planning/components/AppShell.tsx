@@ -8,6 +8,7 @@ import { Iso } from "./Logo";
 import { HoverLayer } from "./HoverLayer";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { useVoice, VoiceProvider } from "./VoiceDialog";
+import { MeetingsProvider } from "./MeetingImportDialog";
 import { alertsFor } from "@/lib/alerts";
 import { ROLE_LABEL } from "@/lib/types";
 import { hasPerson } from "@/lib/people";
@@ -83,6 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <VoiceProvider>
+      <MeetingsProvider>
       <header className="topbar">
         <div className="topbar-in">
           <Link href="/tareas" className="brand">
@@ -126,6 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="main">{loading ? <div className="empty">Cargando…</div> : children}</main>
       <HoverLayer />
+      </MeetingsProvider>
     </VoiceProvider>
   );
 }

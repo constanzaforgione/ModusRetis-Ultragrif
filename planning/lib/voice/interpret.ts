@@ -291,7 +291,7 @@ function findTask(n: string, ctx: VoiceContext): { id: string; score: number } |
 
 // ---------------------------------------------------------------- títulos
 const COMMAND =
-  /^(?:\s*(?:bueno|eh+|este|o sea|dale|ok|listo|che|entonces|y|tambien|ademas|despues|luego|aparte|otra cosa|por otro lado|por ultimo|primero|segundo|tercero)[\s,]+)*\s*(?:(?:por favor|porfa)\s+)?(?:(?:agrega(?:me|le)?|agregar|suma(?:me|le)?|sumar|anota(?:me|le)?|anotar|crea(?:me|le)?|crear|carga(?:me|le)?|cargar|pone(?:me|le)?|mete(?:me|le)?|meter|(?:arma(?:me|le)?|armar|hace(?:me)?|necesito)(?=\s+(?:(?:una|unas|\d+|dos|tres|cuatro|cinco|otra|otras)\s+)?(?:nuevas?\s+)?(?:tareas?|pendientes?)\b))\s+(?:(?:una|la|las|unas|otra|otras|\d+|dos|tres|cuatro|cinco)\s+)?(?:nuevas?\s+)?(?:tareas?|cosas?|pendientes?)?\s*(?:nuevas?\s+)?(?:de|para|que|:)?\s*)?(?:(?:hay que|tengo que|tenemos que|tienen que|tiene que|necesito(?: que)?|necesitamos(?: que)?|quiero(?: que)?|me falta|nos falta|falta|acordate de|acordarme de|recordame(?: que)?|recorda(?:me)? que|no te olvides de|no me olvide de|habria que|deberia(?:mos)?|hay que ir a)\s+)?/;
+  /^(?:\s*(?:bueno|eh+|este|o sea|dale|ok|listo|che|entonces|y|tambien|ademas|despues|luego|aparte|otra cosa|por otro lado|por ultimo|primero|segundo|tercero)[\s,]+)*\s*(?:(?:por favor|porfa)\s+)?(?:(?:agrega(?:me|le)?|agregar|suma(?:me|le)?|sumar|anota(?:me|le)?|anotar|crea(?:me|le)?|crear|pone(?:me|le)?|mete(?:me|le)?|meter|(?:carga(?:me|le)?|cargar|arma(?:me|le)?|armar|hace(?:me)?|necesito)(?=\s+(?:(?:una|unas|\d+|dos|tres|cuatro|cinco|otra|otras)\s+)?(?:nuevas?\s+)?(?:tareas?|pendientes?)\b))\s+(?:(?:una|la|las|unas|otra|otras|\d+|dos|tres|cuatro|cinco)\s+)?(?:nuevas?\s+)?(?:tareas?|cosas?|pendientes?)?\s*(?:nuevas?\s+)?(?:de|para|que|:)?\s*)?(?:(?:hay que|tengo que|tenemos que|tienen que|tiene que|necesito(?: que)?|necesitamos(?: que)?|quiero(?: que)?|me falta|nos falta|falta|acordate de|acordarme de|recordame(?: que)?|recorda(?:me)? que|no te olvides de|no me olvide de|habria que|deberia(?:mos)?|hay que ir a)\s+)?/;
 
 const IRREGULAR: Record<string, string> = { hace: "hacer", pone: "poner", deci: "decir", veni: "venir", sali: "salir", tene: "tener", anda: "ir", ve: "ir", haz: "hacer", pon: "poner", di: "decir" };
 
@@ -597,3 +597,35 @@ export function interpretLocal(text: string, ctx: VoiceContext): VoicePlan {
 }
 
 export type { ProjectStatus };
+
+// ---------------------------------------------------------------- una tarea a partir de un punto suelto
+/** Un renglón (por ejemplo, un "próximo paso" de una reunión) → borrador de tarea, sin cortarlo en varias.
+ *  Las fechas relativas ("el lunes") se cuentan desde ctx.today, que puede ser el día de la reunión. */
+export function draftTask(text: string, ctx: VoiceContext): TaskDraftFields | null {
+  const n = fold(text);
+  const d = findDates(n, ctx.today);
+  const pr = findPriority(n);
+  const who = findPeople(n, ctx);
+  const client = findClient(n, ctx);
+  const proj = findProject(n, ctx, client?.id ?? null);
+  const spans: Span[] = [...d.spans, ...who.spans];
+  if (pr) spans.push(pr.span);
+  if (client?.span) spans.push(client.span);
+  if (proj?.span) spans.push(proj.span);
+  const { title, description } = buildTitle(text, spans);
+  if (!title || title.length < 3) return null;
+  const projectId = proj?.id ?? null;
+  const people = who.ids.filter((id) => ctx.people.some((p) => p.id === id && p.assignable));
+  return {
+    title,
+    description,
+    priority: pr?.priority ?? "media",
+    assignee_ids: people.length ? people : [ctx.me.id],
+    client_id: client?.id ?? (projectId ? (ctx.projects.find((p) => p.id === projectId)?.client_id ?? null) : null),
+    project_id: projectId,
+    project_ref: null,
+    start_date: d.start,
+    due_date: d.due,
+    start_time: d.time,
+  };
+}

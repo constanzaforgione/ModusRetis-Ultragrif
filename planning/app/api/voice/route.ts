@@ -6,9 +6,8 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
-import { todayISO } from "@/lib/dates";
-import { buildVoiceContext, sanitizePlan, type VoiceAction, type VoiceContext } from "@/lib/voice/plan";
-import type { Profile } from "@/lib/types";
+import { sanitizePlan, type VoiceAction, type VoiceContext } from "@/lib/voice/plan";
+import { loadVoiceContext } from "@/lib/voice/server";
 
 export const maxDuration = 60;
 
@@ -137,23 +136,9 @@ export async function POST(req: Request) {
   // Sin clave: el navegador interpreta con el intérprete local
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ ai: false });
 
-  const [{ data: profiles }, { data: clients }, { data: projects }, { data: tasks }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, lead_id, role, active"),
-    supabase.from("clients").select("id, name, active"),
-    supabase.from("projects").select("id, name, client_id, start_date, end_date, status").limit(300),
-    supabase.from("tasks").select("id, title, project_id, client_id, status, due_date, assignee_id, assignee_ids, created_by").neq("status", "hecha").limit(600),
-  ]);
-  const me = profiles?.find((p) => p.id === user.id);
-  if (!me) return NextResponse.json({ error: "No encontramos tu perfil" }, { status: 403 });
-  const ctx = buildVoiceContext({
-    me: me as Profile,
-    profiles: (profiles ?? []) as Profile[],
-    clients: clients ?? [],
-    projects: projects ?? [],
-    tasks: tasks ?? [],
-    today: todayISO(),
-    scope: { project_id: scope?.project_id ?? null, client_id: scope?.client_id ?? null },
-  });
+  const loaded = await loadVoiceContext(supabase, user.id, scope ?? {});
+  if (!loaded) return NextResponse.json({ error: "No encontramos tu perfil" }, { status: 403 });
+  const { ctx } = loaded;
 
   const desde = ctx.scope.project_id
     ? { proyecto: ctx.projects.find((p) => p.id === ctx.scope.project_id)?.name, project_id: ctx.scope.project_id }

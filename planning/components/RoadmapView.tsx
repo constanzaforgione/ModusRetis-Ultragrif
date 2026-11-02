@@ -9,6 +9,7 @@ import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permi
 import { addDays, addMonths, diffDays, fmtMonth, fmtShort, startOfMonth, startOfWeek } from "@/lib/dates";
 import { projectProgress, progressLabel } from "@/lib/progress";
 import { projectPeople, taskPeople } from "@/lib/people";
+import { movePatch, type MoveTarget } from "@/lib/moveTask";
 import { PROJECT_STATUS, PROJECT_STATUS_LABEL, STATUS, type Client, type Project, type Task } from "@/lib/types";
 
 /** Texto blanco u oscuro según qué se lee mejor sobre el color del cliente */
@@ -30,7 +31,7 @@ const MAX_CHIPS = 3;
 const PRIORITY_RANK = { baja: 0, media: 1, alta: 2, urgente: 3 } as const;
 
 export function RoadmapView() {
-  const { me, clients, projects, tasks, profiles, today, byId } = useData();
+  const { me, clients, projects, tasks, profiles, today, byId, save, toast } = useData();
   const staff = isStaff(me);
   const [spanKey, setSpanKey] = useState("semestre");
   const span = SPANS.find((s) => s.key === spanKey)!;
@@ -187,7 +188,45 @@ export function RoadmapView() {
   // Tareas abiertas debajo de su proyecto, en la columna (semana o mes) de su vencimiento
   const placeOf = (t: Task) => t.due_date ?? t.start_date;
   const colsTemplate = cols.map((c) => `minmax(0, ${(pct(colEnd(c)) - pct(c)).toFixed(3)}fr)`).join(" ");
-  const taskGrid = (list: Task[], onUndated: (() => void) | null) => {
+  // Arrastrar una tarea: a otra columna (se corre la fecha) y/o a otro proyecto
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const shiftDate = (t: Task, col: string) => {
+    const d = placeOf(t);
+    if (!d) return colEnd(col) > today && col <= today ? today : col;
+    const i0 = cols.findIndex((c) => d >= c && d < colEnd(c));
+    const i1 = cols.indexOf(col);
+    if (i0 < 0 || i1 < 0) return d;
+    return weekly ? addDays(d, 7 * (i1 - i0)) : addMonths(d, i1 - i0);
+  };
+  async function dropTask(target: MoveTarget, extra: Partial<Task> = {}) {
+    const t = tasks.find((x) => x.id === dragId);
+    setDragId(null);
+    setOver(null);
+    if (!t) return;
+    const patch = { ...movePatch(t, target), ...extra };
+    if (extra.client_id === t.client_id) delete patch.client_id;
+    if (!Object.keys(patch).length) return;
+    const { error } = await save<Task>("tasks", { id: t.id, ...patch });
+    if (error) return toast(error, true);
+    const proj = "project_id" in patch ? (patch.project_id ? (byId.project.get(patch.project_id)?.name ?? "otro proyecto") : "sin proyecto") : null;
+    toast(`«${t.title}»${proj ? ` → ${proj}` : ""}${patch.due_date ?? patch.start_date ? ` · ${fmtShort(patch.due_date ?? patch.start_date)}` : ""}`);
+  }
+  const dropOn = (key: string, target: () => MoveTarget, extra: () => Partial<Task> = () => ({})) =>
+    dragId
+      ? {
+          onDragOver: (e: React.DragEvent) => {
+            e.preventDefault();
+            if (over !== key) setOver(key);
+          },
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault();
+            dropTask(target(), extra());
+          },
+        }
+      : {};
+  /** La grilla de tareas de un proyecto (o de "otras tareas", project = null) */
+  const taskGrid = (list: Task[], onUndated: (() => void) | null, gridKey: string, project: Project | null, rowClient: string | null, shown: Set<string> = new Set()) => {
     const undated = list.filter((t) => !placeOf(t)).length;
     const dated = list.filter((t) => placeOf(t) && placeOf(t)! >= from && placeOf(t)! < to);
     if (!dated.length && !undated) return null;
@@ -199,7 +238,28 @@ export function RoadmapView() {
             .filter((t) => placeOf(t)! >= w && placeOf(t)! < end)
             .sort((a, b) => placeOf(a)!.localeCompare(placeOf(b)!) || PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority]);
           return (
-            <div key={w} className="g-wkcell">
+            <div
+              key={w}
+              className={`g-wkcell ${dragId && over === `${gridKey}|${w}` ? "drop-over" : ""}`}
+              {...dropOn(
+                `${gridKey}|${w}`,
+                () => {
+                  const t = tasks.find((x) => x.id === dragId)!;
+                  // A "otras tareas": sale del proyecto solo si era uno de los que se ven en la fila
+                  const leave = !project && !!t.project_id && shown.has(t.project_id);
+                  return {
+                    date: shiftDate(t, w),
+                    project: project ? { id: project.id, client_id: project.client_id } : leave ? { id: null, client_id: null } : undefined,
+                  };
+                },
+                () => {
+                  // Sin proyecto en la fila de otro cliente: pasa a ese cliente
+                  const t = tasks.find((x) => x.id === dragId);
+                  const free = t && (!t.project_id || shown.has(t.project_id));
+                  return !project && rowClient && free ? { client_id: rowClient } : {};
+                },
+              )}
+            >
               {i === 0 && undated > 0 &&
                 (onUndated ? (
                   <button className="g-more link" onClick={onUndated} title="Ver en el proyecto">
@@ -214,9 +274,23 @@ export function RoadmapView() {
                 return (
                   <button
                     key={t.id}
-                    className={`cal-chip ${late ? "late" : ""}`}
+                    className={`cal-chip ${late ? "late" : ""} ${dragId === t.id ? "dragging" : ""}`}
                     style={{ borderLeftColor: c?.color ?? "var(--border)" }}
                     onClick={() => setOpenTask(t)}
+                    {...(canEditTask(me, t, profiles)
+                      ? {
+                          draggable: true,
+                          onDragStart: (e: React.DragEvent) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", t.id);
+                            setDragId(t.id);
+                          },
+                          onDragEnd: () => {
+                            setDragId(null);
+                            setOver(null);
+                          },
+                        }
+                      : {})}
                     data-hover-task={t.id}
                   >
                     <span className="t">{t.title}</span>
@@ -372,10 +446,11 @@ export function RoadmapView() {
                   return (
                     <div key={p.id} className="g-proj">
                       <button
-                        className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""} ${editProject?.id === p.id ? "sel" : ""}`}
+                        className={`bar ${p.status} ${p.start_date < from ? "cut-l" : ""} ${p.end_date >= to ? "cut-r" : ""} ${editProject?.id === p.id ? "sel" : ""} ${dragId && over === `bar|${p.id}` ? "drop-bar" : ""}`}
                         style={{ marginLeft: `${l}%`, width: `max(${Math.max(r - l, 0.6)}%, 28px)`, background: color, color: textOn(color) }}
                         onClick={() => setEditProject(p)}
                         data-hover-project={p.id}
+                        {...dropOn(`bar|${p.id}`, () => ({ project: { id: p.id, client_id: p.client_id } }))}
                         aria-label={`${p.name}, ${fmtShort(p.start_date)} a ${fmtShort(p.end_date)}, ${PROJECT_STATUS_LABEL[p.status]}, ${pr.done} de ${pr.total} tareas hechas${ownerNames ? `, ${ownerNames}` : ""}`}
                       >
                         <span className="fill" style={{ width: `${pr.pct}%` }} />
@@ -384,7 +459,7 @@ export function RoadmapView() {
                           {p.name} · {progressLabel(pr)}
                         </span>
                       </button>
-                      {taskGrid(own, () => setEditProject(p))}
+                      {taskGrid(own, () => setEditProject(p), `${row.key}|${p.id}`, p, null)}
                     </div>
                   );
                 })}
@@ -397,7 +472,7 @@ export function RoadmapView() {
                   return (
                     <div className="g-proj g-rest">
                       <div className="g-sub">{row.projects.length ? "Otras tareas" : "Tareas sin proyecto"}</div>
-                      {taskGrid(dated, null)}
+                      {taskGrid(dated, null, `${row.key}|rest`, null, groupBy === "cliente" ? row.key : null, shown)}
                     </div>
                   );
                 })()}
