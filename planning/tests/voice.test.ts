@@ -144,3 +144,11 @@ test("desde un proyecto: lista con persona al final y cambio del proyecto", () =
   );
   assert.deepEqual(p.actions.at(-1), { kind: "update_project", project_id: "p1", changes: { end_date: "2026-12-14" }, warning: undefined });
 });
+
+test("el dictado reconoce a Placebo / Confort Iván por cualquiera de sus nombres", () => {
+  const c = { clients: [{ id: "pc", name: "Placebo / Confort Iván" }, { id: "ug", name: "Ultragrif" }], projects: [] };
+  for (const text of ["Para Confort Iván armar el catálogo de mesas", "Para Placebo armar el catálogo de mesas"]) {
+    const [t] = tasks(run(text, c).actions);
+    assert.deepEqual([t.client_id, t.title], ["pc", "Armar el catálogo de mesas"], text);
+  }
+});

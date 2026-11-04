@@ -1,0 +1,30 @@
+// Unificar "Placebo", "Placebo Amoblamientos" y "Confort Iván" en "Placebo / Confort Iván" (supabase/migrations/0010)
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { PGlite } from "@electric-sql/pglite";
+const read = (f) => readFileSync(new URL(`../supabase/${f}`, import.meta.url), "utf8");
+test("todo lo de Placebo y Confort Iván pasa a Placebo / Confort Iván, sin borrar nada", async () => {
+  const db = new PGlite();
+  await db.exec(`create role authenticated; create schema auth; create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;`);
+  for (const f of ["migrations/0001_init.sql", "seed.sql", "migrations/0002_horarios_repeticion_asignacion.sql", "migrations/0003_avisos.sql", "migrations/0004_varios_responsables.sql", "migrations/0005_rrss.sql", "migrations/0008_resumenes.sql"]) await db.exec(read(f));
+  await db.exec(`insert into auth.users (id,email) values ('00000000-0000-0000-0000-00000000000a','a@x');`);
+  const id = async (n) => (await db.query(`select id from public.clients where name=$1`, [n])).rows[0]?.id;
+  const pl = await id("Placebo"), ci = await id("Confort Iván");
+  assert.ok(pl && ci);
+  await db.query(`insert into public.tasks (title, assignee_id, created_by, client_id) values ('a','00000000-0000-0000-0000-00000000000a','00000000-0000-0000-0000-00000000000a',$1),('b','00000000-0000-0000-0000-00000000000a','00000000-0000-0000-0000-00000000000a',$2)`, [pl, ci]);
+  await db.query(`insert into public.social_posts (client_id, publish_date, title, networks) values ($1, '2026-11-03', 'x', array['instagram'])`, [ci]);
+  await db.query(`insert into public.monthly_summaries (client_id, client_name, month) values ($1, 'Confort Iván', '2026-10')`, [ci]);
+  await db.exec(read("migrations/0010_unificar_placebo_confort.sql"));
+  await db.exec(read("migrations/0010_unificar_placebo_confort.sql"));
+  const target = await id("Placebo / Confort Iván");
+  assert.equal(target, pl, "Placebo se renombra");
+  assert.equal((await db.query(`select count(*)::int n from public.tasks where client_id=$1`, [target])).rows[0].n, 2);
+  assert.equal((await db.query(`select count(*)::int n from public.social_posts where client_id=$1`, [target])).rows[0].n, 1);
+  assert.equal((await db.query(`select count(*)::int n from public.monthly_summaries where client_id=$1`, [target])).rows[0].n, 1);
+  const c = (await db.query(`select active, social from public.clients where id=$1`, [ci])).rows[0];
+  assert.deepEqual([c.active, c.social], [false, false]);
+  assert.equal((await db.query(`select social from public.clients where id=$1`, [target])).rows[0].social, true);
+  assert.equal((await db.query(`select count(*)::int n from public.notifications`)).rows[0].n, 0, "sin avisos");
+});

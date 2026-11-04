@@ -61,9 +61,9 @@ test("uno por cliente y mes: gana el consolidado, el resto queda como otra versi
   assert.deepEqual(
     r.map((x) => [x.client, x.month, x.name, x.versions.length]),
     [
-      ["Placebo Amoblamientos", "2026-04", "Resumen de avance - Abril 2026", 0],
+      ["Placebo / Confort Iván", "2026-04", "Resumen de avance - Abril 2026", 0],
       ["Ultragrif", "2026-04", "Resumen de avance - Abril 2026", 0],
-      ["Placebo Amoblamientos", "2026-03", "Resumen de avance - Marzo 2026 v2 (Consolidado)", 1],
+      ["Placebo / Confort Iván", "2026-03", "Resumen de avance - Marzo 2026 v2 (Consolidado)", 1],
     ],
   );
   assert.ok(r.every((x) => !/secreta/.test(x.content)));
@@ -190,8 +190,9 @@ test("un cliente de la app con dos nombres junta los resúmenes de los dos", () 
   assert.equal(matchClient("Confort Ivan", clients)?.name, "Placebo / Confort Iván");
   assert.equal(matchClient("Ultragrif", clients)?.name, "Ultragrif");
   assert.equal(matchClient("Kumi Deco", clients), undefined);
-  // Si existe el cliente solo, gana ese
-  assert.equal(matchClient("Confort Iván", [...clients, { name: "Confort Iván" }])?.name, "Confort Iván");
+  // Placebo y Confort Iván son siempre "Placebo / Confort Iván", aunque exista un cliente viejo con el nombre suelto
+  assert.equal(matchClient("Confort Iván", [...clients, { name: "Confort Iván" }])?.name, "Placebo / Confort Iván");
+  assert.equal(matchClient("Placebo", [{ name: "Placebo" }, ...clients])?.name, "Placebo / Confort Iván");
 });
 
 test("mandar a ClickUp: crea la página en el doc del cliente o la actualiza", async () => {
@@ -219,4 +220,14 @@ test("mandar a ClickUp: crea la página en el doc del cliente o la actualiza", a
   await sendSummaryPage(http, cfg, { docId: "D2", pageId: "P9", name: "x", content: "y" });
   assert.equal(calls[1].method, "PUT");
   assert.match(calls[1].url, /\/pages\/P9$/);
+});
+
+test("Placebo, Placebo Amoblamientos y Confort Iván se muestran como Placebo / Confort Iván", async () => {
+  const { canonicalClient } = await import("../lib/clientAliases");
+  for (const n of ["Placebo", "Placebo Amoblamientos", "PLACEBO AMOBLAMIENTOS", "Confort Iván", "Confort Ivan", "Placebo / Confort Iván"]) assert.equal(canonicalClient(n), "Placebo / Confort Iván", n);
+  assert.equal(canonicalClient("Ultragrif"), "Ultragrif");
+  assert.equal(canonicalClient("Confort"), "Confort");
+  // Copias viejas guardadas como "Placebo Amoblamientos" sin cliente de la app
+  const list = mergeSummaries([stored({ id: "x", client_id: null, client_name: "Placebo Amoblamientos" })], [], () => null, (n) => (matchClient(n, [{ name: "Placebo / Confort Iván" }]) ? { id: "pc", name: "Placebo / Confort Iván" } : undefined));
+  assert.deepEqual([list[0].client, list[0].client_id], ["Placebo / Confort Iván", "pc"]);
 });

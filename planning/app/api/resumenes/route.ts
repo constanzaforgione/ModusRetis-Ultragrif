@@ -47,7 +47,7 @@ export async function GET(req: Request) {
     const { insert, update } = copiesToSave(live, stored);
     const toRow = (p: SummaryPage) => ({
       client_id: matchClient(p.client, clients ?? [])?.id ?? null,
-      client_name: p.client,
+      client_name: matchClient(p.client, clients ?? [])?.name ?? p.client,
       month: p.month,
       title: p.name,
       content: p.content,
@@ -58,6 +58,17 @@ export async function GET(req: Request) {
     if (insert.length) await supabase.from("monthly_summaries").upsert(insert.map((p) => ({ ...toRow(p), source: "clickup", clickup_key: p.key })), { onConflict: "clickup_key", ignoreDuplicates: true });
     for (const u of update) await supabase.from("monthly_summaries").update(toRow(u.page)).eq("id", u.id);
     if (insert.length || update.length) stored = ((await supabase.from("monthly_summaries").select(COLS).order("month", { ascending: false })).data ?? stored) as StoredSummary[];
+  }
+  // Copias guardadas sin cliente de la app ("Placebo Amoblamientos"): se les asigna el que corresponde
+  if (me.staff) {
+    for (const s of stored.filter((x) => !x.client_id)) {
+      const c = matchClient(s.client_name, clients ?? []);
+      if (c) {
+        await supabase.from("monthly_summaries").update({ client_id: c.id, client_name: c.name }).eq("id", s.id);
+        s.client_id = c.id;
+        s.client_name = c.name;
+      }
+    }
   }
   // Las copias de resúmenes que salen de tareas (facturación) siguen siendo solo para admins
   if (me.role !== "admin") stored = stored.filter((s) => !s.clickup_key?.startsWith("task:"));

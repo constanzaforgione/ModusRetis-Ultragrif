@@ -7,6 +7,7 @@
 // Con la clave de IA configurada, el servidor interpreta mucho mejor y esto queda de respaldo.
 import type { Priority, ProjectStatus, TaskStatus } from "../types";
 import type { ProjectChanges, TaskChanges, TaskDraftFields, VoiceAction, VoiceContext, VoicePlan } from "./plan";
+import { namesOf } from "../clientAliases";
 
 // ---------------------------------------------------------------- texto
 /** Minúsculas sin tildes, con el MISMO largo que el original (para cortar partes del texto original) */
@@ -229,12 +230,14 @@ const squash = (s: string) => fold(s).replace(/[^a-z0-9]/g, "");
 
 function findClient(n: string, ctx: VoiceContext): { id: string; span: Span | null } | null {
   const flat = n.replace(/[^a-z0-9]/g, "");
-  const sorted = [...ctx.clients].sort((a, b) => b.name.length - a.name.length);
-  for (const c of sorted) {
-    const key = squash(c.name);
+  // Cada cliente con su nombre y los otros con que se lo nombra ("Placebo", "Confort Iván" → "Placebo / Confort Iván")
+  const names = ctx.clients.flatMap((c) => namesOf(c.name).map((name) => ({ c, name })));
+  for (const { c, name } of names.sort((a, b) => b.name.length - a.name.length)) {
+    const key = squash(name);
     if (key.length < 3 || !flat.includes(key)) continue;
     // Sacar del título "para Ultragrif" / "del cliente Ultragrif"; en "llamar a Ultragrif" queda (es de qué se trata)
-    const re = new RegExp(`\\b(?:para(?:\\s+el\\s+cliente)?|del\\s+cliente|cliente)\\s+${fold(c.name).split(/\s+/).join("\\s*")}\\b`);
+    const words = fold(name).match(/[a-z0-9ñ]+/g) ?? [];
+    const re = new RegExp(`\\b(?:para(?:\\s+el\\s+cliente)?|del\\s+cliente|cliente)\\s+${words.join("\\W*")}\\b`);
     const m = re.exec(n);
     return { id: c.id, span: m ? [m.index, m.index + m[0].length] : null };
   }

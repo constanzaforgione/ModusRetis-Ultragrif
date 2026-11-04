@@ -7,6 +7,7 @@
 //   4. tarjetas sueltas con fecha, red y textos con rótulos ("Copy: …", "Hashtags: …")
 // Lo que no se reconoce queda en notas; en la app se revisa todo antes de importar.
 import type { Network, PostFormat, PostStatus } from "./types";
+import { namesOf } from "./clientAliases";
 
 export interface ImportedPiece {
   date: string | null;
@@ -933,7 +934,8 @@ export function parseSocialCalendar(doc: Document, opts: { clients: string[]; fi
   const ctx = docContext(doc, opts.year ?? new Date().getFullYear());
   const title = doc.title || doc.querySelector("title")?.textContent || "";
   const heads = norm([(opts.fileName ?? "").replace(/[_-]+/g, " "), title, ...[...doc.querySelectorAll("h1, h2, header")].slice(0, 6).map((e) => e.textContent ?? "")].join(" "));
-  const client = opts.clients.find((c) => heads.includes(norm(c))) ?? null;
+  // Por su nombre o por otro con que se lo conoce ("Confort Ivan · Noviembre" → "Placebo / Confort Iván")
+  const client = opts.clients.find((c) => heads.includes(norm(c))) ?? opts.clients.find((c) => namesOf(c).some((a) => heads.includes(norm(a)))) ?? null;
 
   let method: ImportResult["method"] = null;
   let pieces = fromScripts(doc, ctx);

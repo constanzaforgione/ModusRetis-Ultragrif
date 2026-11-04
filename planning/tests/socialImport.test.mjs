@@ -8,8 +8,11 @@ import ts from "typescript";
 import { parseHTML } from "linkedom";
 
 const dir = mkdtempSync(join(tmpdir(), "social-"));
-const src = readFileSync(new URL("../lib/socialImport.ts", import.meta.url), "utf8");
-writeFileSync(join(dir, "socialImport.mjs"), ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
+const toJs = (f) =>
+  ts
+    .transpileModule(readFileSync(new URL(`../lib/${f}.ts`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } })
+    .outputText.replace(/from "\.\/(\w+)"/g, 'from "./$1.mjs"');
+for (const f of ["socialImport", "clientAliases"]) writeFileSync(join(dir, `${f}.mjs`), toJs(f));
 const { parseSocialCalendar, parseDate, parseTime, jsToJson } = await import(join(dir, "socialImport.mjs"));
 
 const CLIENTS = ["Ultragrif", "Modus Retis", "Confort Iván"];
@@ -243,4 +246,9 @@ const data = {
   const ran = [{ 1: { rest: true, label: "Sin publicación" }, 2: { f: ["st"], product: "Cyber Monday · Día 1: mesas", concept: "Abrir el Cyber con las mesas.", stories: ['<span class="tag">Story 1</span><br>Apertura', '<span class="tag">Story 2</span><br>Mesa 140 x 80. Sticker de link: <a href="https://confortivan.com.ar/productos/mesa-140/">https://confortivan.com.ar/productos/mesa-140/</a>'] }, 6: { f: ["carr", "st"], product: "Guía de mesas", copy: "Mesa para 4 o 6" } }];
   const r2 = parseSocialCalendar(parseHTML(wrap(html)).document, { clients: CLIENTS, fileName: "Confort_Ivan___Noviembre_2026.html", year: 2026, ran });
   assert.match(r2.pieces.find((p) => p.date === "2026-11-02").brief, /Stories:\n• Story 1\nApertura\n• Story 2\nMesa 140 x 80\. Sticker de link: https:\/\/confortivan\.com\.ar\/productos\/mesa-140\//);
+});
+
+test("el calendario de Confort Iván va a Placebo / Confort Iván", () => {
+  const r = parseSocialCalendar(parseHTML(wrap(`<title>Confort Ivan · Noviembre 2026</title><table><tr><th>Fecha</th><th>Red</th><th>Tema</th></tr><tr><td>3/11</td><td>Instagram</td><td>Mesas</td></tr></table>`)).document, { clients: ["Ultragrif", "Placebo / Confort Iván"], fileName: "Confort_Ivan.html", year: 2026 });
+  assert.equal(r.client, "Placebo / Confort Iván");
 });

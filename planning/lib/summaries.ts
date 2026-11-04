@@ -1,3 +1,5 @@
+import { canonicalClient } from "./clientAliases";
+
 // Resúmenes mensuales de los clientes (vienen de ClickUp): qué página es un resumen, de qué mes,
 // cuántas horas, y qué nunca se muestra (credenciales, contraseñas).
 
@@ -127,7 +129,8 @@ export function buildSummaries(raw: RawPage[]): SummaryPage[] {
     const content = redact(main.content.trim());
     out.push({
       key: main.key,
-      client: main.client,
+      // "Placebo Amoblamientos" y "Confort Iván" se muestran como el cliente de la app ("Placebo / Confort Iván")
+      client: canonicalClient(main.client),
       name: main.name,
       month,
       hours: hoursOf(content),
@@ -151,7 +154,7 @@ export function clientFromFolder(folder: string) {
 /** Une el nombre de ClickUp con un cliente de la app ("Placebo Amoblamientos" → "Placebo").
  *  Un cliente de la app con varios nombres ("Placebo / Confort Iván") junta a todos. */
 export function matchClient<T extends { name: string }>(clickupName: string, clients: T[]): T | undefined {
-  const n = norm(clickupName);
+  const n = norm(canonicalClient(clickupName));
   if (!n) return undefined;
   const parts = (c: T) => norm(c.name).split(/\s*(?:\/|\||\+|&|,|\by\b)\s*/).filter((x) => x.length >= 3);
   return (
@@ -191,11 +194,12 @@ export function mergeSummaries(
     .filter((s) => !HIDDEN_CLIENTS.test(norm(clientName(s.client_id) ?? s.client_name)))
     .map((s) => {
       const l = s.clickup_key ? liveByKey.get(s.clickup_key) : undefined;
+      const app = s.client_id ? null : appClient(s.client_name);
       return {
         key: `app:${s.id}`,
         id: s.id,
-        client_id: s.client_id,
-        client: clientName(s.client_id) ?? s.client_name,
+        client_id: s.client_id ?? app?.id ?? null,
+        client: clientName(s.client_id) ?? app?.name ?? canonicalClient(s.client_name),
         name: s.title || `Resumen de avance - ${monthLabel(s.month)}`,
         month: s.month,
         hours: s.hours ?? hoursOf(s.content),
