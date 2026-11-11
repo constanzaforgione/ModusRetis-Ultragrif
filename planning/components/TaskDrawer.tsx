@@ -42,8 +42,10 @@ export function TaskDrawer({
   const [repeat, setRepeat] = useState<Recurrence | "">("");
   const [busy, setBusy] = useState(false);
   const editable = isNew || canEditTask(me, task as Task, profiles);
-  const assignable = useMemo(() => assignableProfiles(me, profiles), [me, profiles]);
-  // Solo admins y líderes suman o sacan personas; un miembro ve quiénes están
+  const staff = isStaff(me);
+  // Cualquiera suma compañeros a sus tareas; sacar a otros (y a uno mismo) es de admins y líderes
+  const assignable = useMemo(() => (staff ? assignableProfiles(me, profiles) : profiles.filter((p) => p.active)), [staff, me, profiles]);
+  const [lockedPeople] = useState<string[]>(() => (staff ? [] : [...new Set([me.id, ...(task.assignee_id ? taskPeople(task as Task) : [])])]));
   const clientProjects = projects.filter((p) => p.client_id === f.client_id);
 
   const speech = useSpeech((text) => setF((x) => ({ ...x, description: x.description ? `${x.description} ${text}` : text })));
@@ -183,8 +185,9 @@ export function TaskDrawer({
           onChange={setPeople}
           options={assignable}
           all={byId.profile}
-          disabled={!editable || !isStaff(me)}
-          title={!isStaff(me) ? "Solo admins y líderes suman a otras personas a una tarea" : undefined}
+          disabled={!editable}
+          locked={lockedPeople}
+          title={!staff ? "Podés sumar compañeros a la tarea. Para sacar a alguien, pedíselo a un líder o admin." : undefined}
         />
       </div>
 

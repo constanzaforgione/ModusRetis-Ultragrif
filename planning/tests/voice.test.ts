@@ -152,3 +152,14 @@ test("el dictado reconoce a Placebo / Confort Iván por cualquiera de sus nombre
     assert.deepEqual([t.client_id, t.title], ["pc", "Armar el catálogo de mesas"], text);
   }
 });
+
+test("quien no es admin ni líder suma compañeros y queda en la tarea", async () => {
+  const { sanitizePlan } = await import("../lib/voice/plan");
+  const member = { ...ctx, me: { id: "me", name: "Barbi", staff: false } };
+  const plan = sanitizePlan(run("Para el viernes armar el informe, que lo haga Yani", { me: member.me }), member);
+  const [t] = tasks(plan.actions);
+  assert.deepEqual(t.assignee_ids, ["me", "yani"]);
+  // Admins y líderes sí pueden dejarla solo a otra persona
+  const [s2] = tasks(sanitizePlan(run("Para el viernes armar el informe, que lo haga Yani"), ctx).actions);
+  assert.deepEqual(s2.assignee_ids, ["yani"]);
+});

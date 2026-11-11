@@ -23,7 +23,8 @@ const NEW = "__nuevo__";
 export function MeetingImportDialog({ meetings, ai, onClose }: { meetings: PendingMeeting[]; ai: boolean; onClose: () => void }) {
   const { me, profiles, clients, projects, today, save, toast, byId } = useData();
   const staff = isStaff(me);
-  const people = assignableProfiles(me, profiles);
+  // Cualquiera suma compañeros (quien no es admin ni líder queda también en la tarea)
+  const people = staff ? assignableProfiles(me, profiles) : profiles.filter((p) => p.active);
   const [rows, setRows] = useState<Row[]>(() =>
     meetings.flatMap((m) =>
       m.items.map((it) => ({ ...it, on: true, newName: it.new_project ?? "", useNew: !!it.new_project && !it.project_id && staff })),
@@ -71,7 +72,7 @@ export function MeetingImportDialog({ meetings, ai, onClose }: { meetings: Pendi
           created.set(k, row.id);
         }
       }
-      const ids = r.assignee_ids.length ? r.assignee_ids : [me.id];
+      const ids = !r.assignee_ids.length ? [me.id] : staff || r.assignee_ids.includes(me.id) ? r.assignee_ids : [me.id, ...r.assignee_ids];
       const { error } = await save<Task>("tasks", {
         title: r.title.trim(),
         description: r.description,

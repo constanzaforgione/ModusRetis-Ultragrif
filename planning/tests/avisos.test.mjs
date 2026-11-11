@@ -19,7 +19,7 @@ async function setup() {
     create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
-  for (const f of ["migrations/0001_init.sql", "migrations/0002_horarios_repeticion_asignacion.sql", "migrations/0003_avisos.sql", "migrations/0004_varios_responsables.sql", "migrations/0009_avisos_varias_tareas.sql", "migrations/0009_avisos_varias_tareas.sql", "seed.sql"]) await db.exec(read(f));
+  for (const f of ["migrations/0001_init.sql", "migrations/0002_horarios_repeticion_asignacion.sql", "migrations/0003_avisos.sql", "migrations/0004_varios_responsables.sql", "migrations/0009_avisos_varias_tareas.sql", "migrations/0009_avisos_varias_tareas.sql", "migrations/0011_sumar_companeros.sql", "migrations/0011_sumar_companeros.sql", "seed.sql"]) await db.exec(read(f));
   await db.exec(`
     grant usage on schema public, auth to authenticated;
     grant all on all tables in schema public to authenticated;
@@ -130,12 +130,17 @@ test("varios responsables: sincroniza, permisos, avisos y responsables del proye
   assert.equal(upd.rows.length, 1);
   assert.match((await notes(db, MEMBER)).find((x) => x.kind === "cambio").message, /Maxi cambió estado: Pendiente → En curso/);
 
-  // un miembro no puede sumar a otra persona
-  await assert.rejects(as(db, MEMBER, `update public.tasks set assignee_ids = $2 where id = $1`, [t, [MEMBER, OTHER, ADMIN]]), /Solo admins y líderes/);
-  await assert.rejects(
-    as(db, MEMBER, `insert into public.tasks (title, assignee_id, assignee_ids, created_by) values ('X', $1, $2, $1)`, [MEMBER, [MEMBER, OTHER]]),
-    /Solo admins y líderes/,
-  );
+  // un miembro suma compañeros a una tarea en la que está, y a una suya nueva (Barbi crea una tarea y suma a Yani)
+  await as(db, MEMBER, `update public.tasks set assignee_ids = $2 where id = $1`, [t, [MEMBER, OTHER, ADMIN]]);
+  assert.deepEqual((await db.query(`select assignee_ids from public.tasks where id = $1`, [t])).rows[0].assignee_ids, [MEMBER, OTHER, ADMIN]);
+  assert.ok((await notes(db, ADMIN)).some((x) => x.kind === "asignada" && /Yani te asignó «Folleto»/.test(x.message)));
+  const own = (await as(db, MEMBER, `insert into public.tasks (title, assignee_id, assignee_ids, created_by) values ('Fotos', $1, $2, $1) returning id`, [MEMBER, [MEMBER, OTHER]])).rows[0].id;
+  assert.deepEqual((await db.query(`select assignee_ids from public.tasks where id = $1`, [own])).rows[0].assignee_ids, [MEMBER, OTHER]);
+  assert.ok((await notes(db, OTHER)).some((x) => x.kind === "asignada" && /Yani te asignó «Fotos»/.test(x.message)));
+  // pero no puede crear una tarea solo para otro, ni sacar a otros
+  await assert.rejects(as(db, MEMBER, `insert into public.tasks (title, assignee_id, assignee_ids, created_by) values ('Y', $1, $2, $3)`, [OTHER, [OTHER], MEMBER]));
+  await assert.rejects(as(db, MEMBER, `update public.tasks set assignee_ids = $2 where id = $1`, [t, [MEMBER, OTHER]]), /Solo admins y líderes sacan/);
+  await as(db, LEAD, `update public.tasks set assignee_ids = $2 where id = $1`, [t, [MEMBER, OTHER]]);
 
   // sacar a alguien: le avisa y el principal se reacomoda
   await as(db, LEAD, `update public.tasks set assignee_ids = $2 where id = $1`, [t, [OTHER]]);

@@ -49,8 +49,9 @@ export function VoiceDialog({ onClose, scope = {} }: { onClose: () => void; scop
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const speech = useSpeech((t) => setText((x) => (x ? `${x} ${t}` : t)));
-  const people = assignableProfiles(me, profiles);
   const staff = isStaff(me);
+  // Cualquiera suma compañeros (quien no es admin ni líder queda también en la tarea)
+  const people = staff ? assignableProfiles(me, profiles) : profiles.filter((p) => p.active);
   const supported = speechSupported();
   const scopeProject = scope.project_id ? byId.project.get(scope.project_id) : undefined;
   const scopeClient = scope.client_id ? byId.client.get(scope.client_id) : undefined;
@@ -200,7 +201,11 @@ export function VoiceDialog({ onClose, scope = {} }: { onClose: () => void; scop
         if (c.start_date) patch.start_date = c.start_date;
         if (c.due_date) patch.due_date = c.due_date;
         if (c.start_time) patch.start_time = c.start_time;
-        if (c.assignee_ids?.length) Object.assign(patch, { assignee_id: c.assignee_ids[0], assignee_ids: c.assignee_ids });
+        if (c.assignee_ids?.length) {
+          // Quien no es admin ni líder suma personas a la tarea sin sacar a las que ya estaban
+          const ids = staff ? c.assignee_ids : [...new Set([...taskPeople(t), ...c.assignee_ids])];
+          Object.assign(patch, { assignee_id: ids[0], assignee_ids: ids });
+        }
         if (c.project_id) Object.assign(patch, { project_id: c.project_id, client_id: byId.project.get(c.project_id)?.client_id ?? t.client_id });
         if (c.note) patch.description = t.description ? `${t.description}\n\n${c.note}` : c.note;
         const { error } = await save<Task>("tasks", patch);

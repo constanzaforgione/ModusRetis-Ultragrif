@@ -87,7 +87,8 @@ export function buildVoiceContext(a: {
 }): VoiceContext {
   const me = a.me as Profile;
   const profiles = a.profiles as Profile[];
-  const can = new Set(assignableProfiles(me, profiles).map((p) => p.id));
+  // Admins y líderes asignan a quien quieran; el resto suma compañeros a sus tareas (quedando en ellas)
+  const can = new Set((isStaff(me) ? assignableProfiles(me, profiles) : profiles.filter((p) => p.active)).map((p) => p.id));
   return {
     today: a.today,
     me: { id: me.id, name: me.full_name, staff: isStaff(me) },
@@ -127,7 +128,8 @@ export function sanitizePlan(plan: VoicePlan, ctx: VoiceContext): VoicePlan {
           ...t,
           title: t.title.trim().slice(0, 200),
           description: t.description ?? "",
-          assignee_ids: ids.length ? [...new Set(ids)] : [ctx.me.id],
+          // Quien no es admin ni líder queda siempre en la tarea (suma compañeros, no se la pasa a otro)
+          assignee_ids: ids.length ? [...new Set(ctx.me.staff || ids.includes(ctx.me.id) ? ids : [ctx.me.id, ...ids])] : [ctx.me.id],
           client_id: t.client_id && clients.has(t.client_id) ? t.client_id : null,
           project_id: t.project_id && projects.has(t.project_id) ? t.project_id : null,
           project_ref: t.project_ref && refs.has(t.project_ref) ? t.project_ref : null,
