@@ -104,18 +104,6 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
         return;
     }
     setBusy(true);
-    if (mode === "reemplazar" && replaced.length) {
-      const { data, error } = await supabaseBrowser()
-        .from("social_posts")
-        .delete()
-        .in("id", replaced.map((p) => p.id))
-        .select("id");
-      if (error || (data?.length ?? 0) < replaced.length) {
-        setBusy(false);
-        await reload("social_posts");
-        return toast(error?.message ?? "No se pudieron borrar todas las piezas anteriores: no se importó nada", true);
-      }
-    }
     const payload = chosen.map((r) => ({
       client_id: clientId,
       publish_date: r.date,
@@ -135,13 +123,34 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
       assignee_id: me.id,
       created_by: me.id,
     }));
+    // Primero se cargan las nuevas; recién si salió bien se borran las anteriores (si algo falla, no se pierde nada)
     const { error } = await supabaseBrowser().from("social_posts").insert(payload);
+    if (error) {
+      setBusy(false);
+      return toast(/schema cache|does not exist/i.test(error.message) ? "Falta correr en Supabase la migración de RRSS (0005_rrss.sql)." : `No se importó nada: ${error.message}`, true);
+    }
+    let deleted = 0;
+    if (mode === "reemplazar" && replaced.length) {
+      const { data, error: delError } = await supabaseBrowser()
+        .from("social_posts")
+        .delete()
+        .in("id", replaced.map((p) => p.id))
+        .select("id");
+      deleted = data?.length ?? 0;
+      if (delError || deleted < replaced.length) {
+        setBusy(false);
+        await reload("social_posts");
+        return toast(
+          `Se importaron ${payload.length} piezas, pero no se pudieron borrar ${replaced.length - deleted} de las anteriores${delError ? ` (${delError.message})` : ""}: quedaron en el calendario, borralas a mano.`,
+          true,
+        );
+      }
+    }
     setBusy(false);
-    if (error) return toast(/schema cache|does not exist/i.test(error.message) ? "Falta correr en Supabase la migración de RRSS (0005_rrss.sql)." : error.message, true);
     await reload("social_posts");
     toast(
-      mode === "reemplazar" && replaced.length
-        ? `Listo: calendario reemplazado (${replaced.length} ${replaced.length === 1 ? "pieza borrada" : "piezas borradas"}, ${payload.length} ${payload.length === 1 ? "importada" : "importadas"})`
+      deleted
+        ? `Listo: calendario reemplazado (${deleted} ${deleted === 1 ? "pieza borrada" : "piezas borradas"}, ${payload.length} ${payload.length === 1 ? "importada" : "importadas"})`
         : `Listo: ${payload.length} ${payload.length === 1 ? "pieza importada" : "piezas importadas"}`,
     );
     onDone(payload.map((p) => p.publish_date!).sort()[0] ?? null);
