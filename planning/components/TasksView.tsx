@@ -6,6 +6,7 @@ import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { useVoice } from "./VoiceDialog";
 import { useMeetings } from "./MeetingImportDialog";
 import { TaskExportDialog } from "./TaskExportDialog";
+import { ClientFilter } from "./ClientFilter";
 import { CalendarView } from "./CalendarView";
 import { canEditTask, isStaff, teamIds } from "@/lib/permissions";
 import { taskPeople } from "@/lib/people";
@@ -173,18 +174,16 @@ export function TasksView() {
             </button>
           </div>
         </div>
-        <label className="field">
+        <div className="field">
           <span>Cliente</span>
-          <select value={client} onChange={(e) => setClient(e.target.value)} className={client ? "active" : ""}>
-            <option value="">Todos</option>
-            <option value="interno">Interno / sin cliente</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <ClientFilter
+            multiple={false}
+            options={clients.filter((c) => c.active || c.id === client)}
+            extra={[{ id: "interno", name: "Interno / sin cliente" }]}
+            value={client ? [client] : []}
+            onChange={(ids) => setClient(ids[0] ?? "")}
+          />
+        </div>
         {scope !== "mias" && (
           <label className="field">
             <span>Persona</span>

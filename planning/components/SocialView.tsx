@@ -4,7 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { Avatar } from "./ui";
-import { NetBadges } from "./NetBadges";
+import { NetBadges, NetFilter } from "./NetBadges";
+import { ClientFilter } from "./ClientFilter";
 import { SocialPostDrawer, type PostDraft } from "./SocialPostDrawer";
 import { SocialImportDialog } from "./SocialImportDialog";
 import { SocialAccountsPanel } from "./SocialAccountsPanel";
@@ -247,37 +248,13 @@ export function SocialView() {
             ))}
           </select>
         </div>
-        <div className="field" style={{ flex: "1 1 260px" }}>
+        <div className="field">
           <span>Cliente</span>
-          <div className="chips one-line">
-            {socialClients.map((c) => (
-              <button key={c.id} className={`chip ${onlyClients.has(c.id) ? "on" : ""}`} onClick={() => toggle(onlyClients, c.id, setOnlyClients)}>
-                <i style={{ background: c.color }} />
-                {c.name}
-              </button>
-            ))}
-            {onlyClients.size > 0 && (
-              <button className="btn ghost sm" onClick={() => setOnlyClients(new Set())}>
-                Ver todos
-              </button>
-            )}
-          </div>
+          <ClientFilter options={socialClients} value={[...onlyClients]} onChange={(ids) => setOnlyClients(new Set(ids))} />
         </div>
-        <div className="field" style={{ flex: "1 1 260px" }}>
+        <div className="field">
           <span>Redes</span>
-          <div className="chips one-line">
-            {NETWORKS.map((n) => (
-              <button key={n.key} className={`chip ${onlyNets.has(n.key) ? "on" : ""}`} onClick={() => toggle(onlyNets, n.key, setOnlyNets)} aria-pressed={onlyNets.has(n.key)}>
-                <NetBadges nets={[n.key]} plain={onlyNets.has(n.key)} />
-                {n.label}
-              </button>
-            ))}
-            {onlyNets.size > 0 && (
-              <button className="btn ghost sm" onClick={() => setOnlyNets(new Set())}>
-                Todas
-              </button>
-            )}
-          </div>
+          <NetFilter value={onlyNets} onChange={setOnlyNets} />
         </div>
       </div>
 

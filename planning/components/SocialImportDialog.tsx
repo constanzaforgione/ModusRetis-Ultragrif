@@ -9,7 +9,8 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { norm, parseSocialCalendar, type ImportedPiece, type ImportResult } from "@/lib/socialImport";
 import { runCalendarScripts } from "@/lib/socialRun";
 import { FORMATS, NETWORKS, POST_STATUS } from "@/lib/social";
-import { fmtShort } from "@/lib/dates";
+import { fmtMonth, fmtShort } from "@/lib/dates";
+import { canDelete } from "@/lib/permissions";
 import type { Network, PostFormat, PostStatus } from "@/lib/types";
 
 type Row = ImportedPiece & { on: boolean; dup: boolean; noNet: boolean; open: boolean };
@@ -41,9 +42,13 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
     setHtml(await f.text());
   }
 
-  const markDups = (list: Row[], cid: string) =>
+  // sumar: se agregan al calendario que ya está · reemplazar: se borran las piezas de ese cliente en esos meses (menos las publicadas)
+  const [mode, setMode] = useState<"sumar" | "reemplazar">("sumar");
+  const admin = canDelete(me);
+  const markDups = (list: Row[], cid: string, m: "sumar" | "reemplazar" = mode) =>
     list.map((r) => {
-      const dup = !!r.date && posts.some((p) => p.client_id === cid && p.publish_date === r.date && norm(p.title) === norm(r.title));
+      const dup =
+        !!r.date && posts.some((p) => p.client_id === cid && p.publish_date === r.date && norm(p.title) === norm(r.title) && (m === "sumar" || p.status === "publicada"));
       return { ...r, dup, on: r.on && !dup };
     });
 
@@ -67,6 +72,17 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
     setStage("revisar");
   }
 
+  // Lo que se borra al reemplazar: las piezas de ese cliente en los meses del calendario nuevo, menos las publicadas
+  const months = useMemo(() => new Set(rows.filter((r) => r.on && r.date).map((r) => r.date!.slice(0, 7))), [rows]);
+  const existing = posts.filter((p) => p.client_id === clientId && months.has(p.publish_date.slice(0, 7)));
+  const replaced = existing.filter((p) => p.status !== "publicada");
+  const clientName = socialClients.find((c) => c.id === clientId)?.name ?? "este cliente";
+  const monthsLabel = [...months].sort().map((m) => fmtMonth(`${m}-01`, true)).join(", ") || "esos meses";
+  const changeMode = (m: "sumar" | "reemplazar") => {
+    setMode(m);
+    setRows((rs) => markDups(rs.map((r) => ({ ...r, on: r.on || r.dup })), clientId, m));
+  };
+
   const setRow = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const chosen = rows.filter((r) => r.on);
   const missingDate = chosen.filter((r) => !r.date).length;
@@ -79,7 +95,27 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
     if (!clientId) return toast("Elegí a qué cliente pertenece el calendario", true);
     if (!chosen.length) return toast("No hay piezas marcadas para importar", true);
     if (missingDate) return toast(`Faltan fechas en ${missingDate} ${missingDate === 1 ? "pieza" : "piezas"}`, true);
+    if (mode === "reemplazar") {
+      if (!admin) return toast("Reemplazar el calendario es solo para admins", true);
+      if (
+        replaced.length &&
+        !confirm(`Se van a borrar ${replaced.length} ${replaced.length === 1 ? "pieza" : "piezas"} de ${clientName} de ${monthsLabel} (las publicadas quedan) y cargar ${chosen.length}. ¿Seguimos?`)
+      )
+        return;
+    }
     setBusy(true);
+    if (mode === "reemplazar" && replaced.length) {
+      const { data, error } = await supabaseBrowser()
+        .from("social_posts")
+        .delete()
+        .in("id", replaced.map((p) => p.id))
+        .select("id");
+      if (error || (data?.length ?? 0) < replaced.length) {
+        setBusy(false);
+        await reload("social_posts");
+        return toast(error?.message ?? "No se pudieron borrar todas las piezas anteriores: no se importó nada", true);
+      }
+    }
     const payload = chosen.map((r) => ({
       client_id: clientId,
       publish_date: r.date,
@@ -103,7 +139,11 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
     setBusy(false);
     if (error) return toast(/schema cache|does not exist/i.test(error.message) ? "Falta correr en Supabase la migración de RRSS (0005_rrss.sql)." : error.message, true);
     await reload("social_posts");
-    toast(`Listo: ${payload.length} ${payload.length === 1 ? "pieza importada" : "piezas importadas"}`);
+    toast(
+      mode === "reemplazar" && replaced.length
+        ? `Listo: calendario reemplazado (${replaced.length} ${replaced.length === 1 ? "pieza borrada" : "piezas borradas"}, ${payload.length} ${payload.length === 1 ? "importada" : "importadas"})`
+        : `Listo: ${payload.length} ${payload.length === 1 ? "pieza importada" : "piezas importadas"}`,
+    );
     onDone(payload.map((p) => p.publish_date!).sort()[0] ?? null);
     onClose();
   }
@@ -191,7 +231,7 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
               Cancelar
             </button>
             <button className="btn primary" onClick={importNow} disabled={busy || !chosen.length || !clientId}>
-              {busy ? "Importando…" : `Importar ${chosen.length} ${chosen.length === 1 ? "pieza" : "piezas"}`}
+              {busy ? "Importando…" : `${mode === "reemplazar" && replaced.length ? "Reemplazar e importar" : "Importar"} ${chosen.length} ${chosen.length === 1 ? "pieza" : "piezas"}`}
             </button>
           </div>
         </>
@@ -215,7 +255,7 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
                 value={clientId}
                 onChange={(e) => {
                   setClientId(e.target.value);
-                  setRows((rs) => markDups(rs.map((r) => ({ ...r, on: r.on || r.dup })), e.target.value));
+                  setRows((rs) => markDups(rs.map((r) => ({ ...r, on: r.on || r.dup })), e.target.value, mode));
                 }}
               >
                 <option value="">Elegí…</option>
@@ -234,6 +274,32 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
               </div>
             </div>
           </div>
+          {clientId && existing.length > 0 && (
+            <div className="field">
+              <span>
+                Ya hay {existing.length} {existing.length === 1 ? "pieza" : "piezas"} de {clientName} en {monthsLabel}
+              </span>
+              <div className="seg">
+                <button className={mode === "sumar" ? "on" : ""} onClick={() => changeMode("sumar")}>
+                  Sumar al calendario
+                </button>
+                <button
+                  className={mode === "reemplazar" ? "on" : ""}
+                  onClick={() => changeMode("reemplazar")}
+                  disabled={!admin}
+                  title={admin ? undefined : "Reemplazar (borrar lo que había) es solo para admins"}
+                >
+                  Reemplazar el calendario
+                </button>
+              </div>
+              <div className="meta-line">
+                {mode === "sumar"
+                  ? "Se agregan las piezas nuevas a las que ya están; las repetidas (mismo día y título) quedan desmarcadas."
+                  : `Se borran las ${replaced.length} piezas de ${clientName} de ${monthsLabel} que no están publicadas${existing.length > replaced.length ? ` (quedan las ${existing.length - replaced.length} publicadas)` : ""} y se cargan las del archivo.`}
+                {!admin && " Reemplazar es solo para admins."}
+              </div>
+            </div>
+          )}
           {rows.some((r) => r.date && r.date < today && r.status !== "publicada") && (
             <div className="notice">
               {rows.filter((r) => r.date && r.date < today).length} piezas tienen fecha anterior a hoy.{" "}

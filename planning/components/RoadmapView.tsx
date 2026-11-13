@@ -5,6 +5,7 @@ import { useData } from "./DataProvider";
 import { Avatar, Avatars, CLIENT_COLORS, Modal, namesOf, PeoplePicker, shortNames, SidePanel } from "./ui";
 import { TaskDrawer, type TaskDraft } from "./TaskDrawer";
 import { useVoice } from "./VoiceDialog";
+import { ClientFilter } from "./ClientFilter";
 import { assignableProfiles, canDelete, canEditTask, isStaff } from "@/lib/permissions";
 import { addDays, addMonths, diffDays, fmtMonth, fmtShort, startOfMonth, startOfWeek } from "@/lib/dates";
 import { projectProgress, progressLabel } from "@/lib/progress";
@@ -369,31 +370,29 @@ export function RoadmapView() {
             </button>
           </div>
         </div>
-        <div className="field" style={{ flex: "1 1 300px" }}>
-          <span>{groupBy === "cliente" ? "Clientes" : "Colaboradores"}</span>
-          <div className="chips one-line">
-            {groupBy === "cliente"
-              ? clients
-                  .filter((c) => showInactive || c.active)
-                  .map((c) => (
-                    <button key={c.id} className={`chip ${only.has(c.id) ? "on" : ""}`} onClick={() => toggleOnly(c.id)}>
-                      <i style={{ background: c.color }} />
-                      {c.name}
-                    </button>
-                  ))
-              : people.map((p) => (
-                  <button key={p.id} className={`chip ${only.has(p.id) ? "on" : ""}`} onClick={() => toggleOnly(p.id)}>
-                    <Avatar p={p} sm />
-                    {p.full_name}
-                  </button>
-                ))}
-            {only.size > 0 && (
-              <button className="btn ghost sm" onClick={() => setOnly(new Set())}>
-                Ver todos
-              </button>
-            )}
+        {groupBy === "cliente" ? (
+          <div className="field">
+            <span>Clientes</span>
+            <ClientFilter options={clients.filter((c) => showInactive || c.active)} value={[...only]} onChange={(ids) => setOnly(new Set(ids))} />
           </div>
-        </div>
+        ) : (
+          <div className="field" style={{ flex: "1 1 300px" }}>
+            <span>Colaboradores</span>
+            <div className="chips one-line">
+              {people.map((p) => (
+                <button key={p.id} className={`chip ${only.has(p.id) ? "on" : ""}`} onClick={() => toggleOnly(p.id)}>
+                  <Avatar p={p} sm />
+                  {p.full_name}
+                </button>
+              ))}
+              {only.size > 0 && (
+                <button className="btn ghost sm" onClick={() => setOnly(new Set())}>
+                  Ver todos
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <label className="toggle">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Mostrar inactivos
         </label>

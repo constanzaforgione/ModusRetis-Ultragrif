@@ -693,3 +693,32 @@ select.person-add { width: auto; border-style: dashed; color: var(--primary); fo
 .sum-text { min-height: 360px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.55; }
 .sum-preview { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; min-height: 200px; max-height: 60vh; overflow: auto; }
 .sum-auto { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+
+/* Filtro de clientes con color */
+.cf { position: relative; min-width: 0; }
+.cf-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 190px; max-width: 320px; height: var(--ctl-h, 38px); padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; text-align: left; }
+.cf-btn.active { border-color: var(--primary); }
+.cf-btn:hover { border-color: var(--primary); }
+.cf-label { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cf-caret { color: var(--muted); font-size: 12px; }
+.cf-dot { display: inline-block; flex: none; width: 11px; height: 11px; border-radius: 50%; border: 2px solid; box-sizing: border-box; }
+.cf-dot.all { background: conic-gradient(#304cd3, #00a9b0, #e8b100, #8b5cf6, #304cd3); border: 0; }
+.cf-dots { display: inline-flex; }
+.cf-dots > span + span { margin-left: -4px; }
+.cf-dots .cf-dot { box-shadow: 0 0 0 2px var(--surface); }
+.cf-pop { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: max(100%, 240px); width: max-content; max-width: min(340px, calc(100vw - 32px)); max-height: 360px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; }
+.cf-opt { display: flex; align-items: center; gap: 10px; white-space: nowrap; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.cf-opt:hover { background: var(--surface2); }
+.cf-opt.on { font-weight: 700; }
+.cf-name { flex: 1; min-width: 0; }
+.cf-check { color: var(--primary); font-weight: 800; }
+.cf-foot { display: flex; justify-content: space-between; gap: 8px; padding: 6px 4px 2px; border-top: 1px solid var(--grid); margin-top: 4px; }
+@media (max-width: 620px) { .cf-btn { max-width: none; min-width: 0; } }
+
+/* Filtro de redes: círculos con el logo */
+.net-filter { display: flex; gap: 8px; height: var(--ctl-h, 38px); align-items: center; }
+.net-round { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--border); background: var(--surface); color: var(--net); cursor: pointer; padding: 0; transition: background 0.15s, color 0.15s; }
+.net-round:hover { border-color: var(--net); }
+.net-round.on { background: var(--net); border-color: var(--net); color: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--net) 25%, transparent); }
+.net-round.net-tiktok { --net: var(--ink); }
+.net-round.net-tiktok.on { color: var(--surface); }

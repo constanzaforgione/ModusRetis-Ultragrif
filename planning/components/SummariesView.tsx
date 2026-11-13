@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { SidePanel } from "./ui";
+import { ClientFilter } from "./ClientFilter";
 import { Markdown, plainPreview } from "./Markdown";
 import { matchClient, monthLabel, summaryDraft, summaryTasks, type SummaryPage } from "@/lib/summaries";
 import { isStaff, canDelete } from "@/lib/permissions";
@@ -205,30 +206,11 @@ export function SummariesView() {
           </div>
           <div className="field" style={{ flex: "1 1 300px" }}>
             <span>Clientes</span>
-            <div className="chips one-line">
-              {clientNames.map((c) => (
-                <button
-                  key={c}
-                  className={`chip ${only.has(c) ? "on" : ""}`}
-                  onClick={() =>
-                    setOnly((x) => {
-                      const n = new Set(x);
-                      if (n.has(c)) n.delete(c);
-                      else n.add(c);
-                      return n;
-                    })
-                  }
-                >
-                  <i style={{ background: matchClient(c, clients)?.color ?? "var(--muted)" }} />
-                  {c}
-                </button>
-              ))}
-              {only.size > 0 && (
-                <button className="btn ghost sm" onClick={() => setOnly(new Set())}>
-                  Ver todos
-                </button>
-              )}
-            </div>
+            <ClientFilter
+              options={clientNames.map((c) => ({ id: c, name: c, color: matchClient(c, clients)?.color ?? null }))}
+              value={[...only]}
+              onChange={(ids) => setOnly(new Set(ids))}
+            />
           </div>
         </div>
       )}

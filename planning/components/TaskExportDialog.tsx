@@ -4,6 +4,7 @@
 import { useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { Modal, PeoplePicker } from "./ui";
+import { ClientFilter } from "./ClientFilter";
 import { addDays, addMonths, startOfMonth } from "@/lib/dates";
 import { claudePrompt, selectTasks, toCSV, type ExportFilters } from "@/lib/exportTasks";
 
@@ -103,19 +104,15 @@ export function TaskExportDialog({ onClose, initial }: { onClose: () => void; in
         </button>
       </div>
       <div className="grid2">
-        <label className="field">
+        <div className="field">
           <span>Cliente</span>
-          <select value={f.client_id ?? ""} onChange={(e) => set({ client_id: e.target.value || null })}>
-            <option value="">Todos los clientes</option>
-            {clients
-              .filter((c) => c.active || c.id === f.client_id)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-          </select>
-        </label>
+          <ClientFilter
+            multiple={false}
+            options={clients.filter((c) => c.active || c.id === f.client_id)}
+            value={f.client_id ? [f.client_id] : []}
+            onChange={(ids) => set({ client_id: ids[0] ?? null })}
+          />
+        </div>
         <label className="field">
           <span>Tareas</span>
           <select value={f.include} onChange={(e) => set({ include: e.target.value as ExportFilters["include"] })}>
