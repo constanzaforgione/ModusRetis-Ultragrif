@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { useData } from "./DataProvider";
 import { Avatar } from "./ui";
 import { ROLE_LABEL, type Profile, type Role } from "@/lib/types";
@@ -189,6 +190,106 @@ export function TeamView() {
           También pueden entrar solos con su mail de trabajo: aparecen acá como Miembro y un admin les asigna rol y líder.
         </p>
       </div>
+      {admin && <DeletionLog />}
     </>
+  );
+}
+
+const KIND: Record<string, string> = {
+  social_posts: "Pieza de redes",
+  tasks: "Tarea",
+  projects: "Proyecto",
+  clients: "Cliente",
+  recurring_tasks: "Tarea que se repite",
+  monthly_summaries: "Resumen mensual",
+};
+
+interface Deletion {
+  id: number;
+  table_name: string;
+  title: string;
+  client_id: string | null;
+  deleted_by: string | null;
+  deleted_at: string;
+  row_data: Record<string, unknown>;
+}
+
+/** Lo que se borró, quién y cuándo (lo registra la base sola; solo lo ven admins) */
+function DeletionLog() {
+  const { byId } = useData();
+  const [rows, setRows] = useState<Deletion[] | null>(null);
+  const [missing, setMissing] = useState(false);
+  const [kind, setKind] = useState("");
+  useEffect(() => {
+    supabaseBrowser()
+      .from("deletion_log")
+      .select("id, table_name, title, client_id, deleted_by, deleted_at, row_data")
+      .order("deleted_at", { ascending: false })
+      .limit(200)
+      .then(({ data, error }: { data: unknown[] | null; error: unknown }) => {
+        if (error) setMissing(true);
+        else setRows((data ?? []) as Deletion[]);
+      });
+  }, []);
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
+  const detail = (r: Deletion) => {
+    const d = r.row_data;
+    const date = (d.publish_date ?? d.due_date ?? d.month ?? d.start_date) as string | undefined;
+    return [date, d.status as string | undefined].filter(Boolean).join(" · ");
+  };
+  const list = (rows ?? []).filter((r) => !kind || r.table_name === kind);
+  return (
+    <div className="panel">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <h2>Registro de borrados</h2>
+        {rows && rows.length > 0 && (
+          <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Qué se borró">
+            <option value="">Todo</option>
+            {Object.entries(KIND).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
+        Cada vez que alguien borra algo queda acá qué era, quién lo borró y cuándo. Solo lo ven los admins y no se puede borrar.
+      </p>
+      {missing ? (
+        <div className="notice">Falta correr en Supabase el SQL del registro de borrados (0013).</div>
+      ) : !rows ? (
+        <div className="muted">Cargando…</div>
+      ) : !list.length ? (
+        <div className="empty">Todavía no se borró nada.</div>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Cuándo</th>
+                <th>Quién</th>
+                <th>Qué</th>
+                <th>Cliente</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((r) => (
+                <tr key={r.id}>
+                  <td className="mono">{when(r.deleted_at)}</td>
+                  <td>{r.deleted_by ? (byId.profile.get(r.deleted_by)?.full_name ?? "—") : "Sistema"}</td>
+                  <td>
+                    <span className="muted">{KIND[r.table_name] ?? r.table_name}:</span> <b>{r.title || "Sin título"}</b>
+                    {detail(r) && <span className="muted"> · {detail(r)}</span>}
+                  </td>
+                  <td>{r.client_id ? (byId.client.get(r.client_id)?.name ?? "Cliente borrado") : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
