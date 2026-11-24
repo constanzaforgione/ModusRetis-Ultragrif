@@ -722,3 +722,9 @@ select.person-add { width: auto; border-style: dashed; color: var(--primary); fo
 .net-round.on { background: var(--net); border-color: var(--net); color: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--net) 25%, transparent); }
 .net-round.net-tiktok { --net: var(--ink); }
 .net-round.net-tiktok.on { color: var(--surface); }
+
+/* Presentaciones del Drive en los resúmenes */
+.sum-decks { display: flex; flex-wrap: wrap; gap: 6px; }
+.sum-deck { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--primary); background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sum-deck:hover { border-color: var(--primary); }
+.sum-deck-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useData } from "./DataProvider";
 import { SidePanel } from "./ui";
 import { ClientFilter } from "./ClientFilter";
+import { presentationsFor, type Presentation } from "@/lib/drive";
 import { Markdown, plainPreview } from "./Markdown";
 import { matchClient, monthLabel, summaryDraft, summaryTasks, type SummaryPage } from "@/lib/summaries";
 import { isStaff, canDelete } from "@/lib/permissions";
@@ -15,7 +16,7 @@ const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { day:
 
 type State =
   | { status: "loading" }
-  | { status: "ok"; summaries: SummaryPage[]; at: string; clickup: boolean; clickupError: string | null; needsSql: boolean }
+  | { status: "ok"; summaries: SummaryPage[]; at: string; clickup: boolean; clickupError: string | null; needsSql: boolean; presentations: Presentation[]; driveError: string | null }
   | { status: "missing" }
   | { status: "error"; message: string };
 
@@ -50,7 +51,16 @@ export function SummariesView() {
       if (res.status === 503 && body.error === "missing_config") setState({ status: "missing" });
       else if (!res.ok) setState({ status: "error", message: body.error ?? "No se pudieron leer los resúmenes" });
       else {
-        setState({ status: "ok", summaries: body.summaries, at: body.at, clickup: body.clickup ?? false, clickupError: body.clickupError ?? null, needsSql: !!body.needsSql });
+        setState({
+          status: "ok",
+          summaries: body.summaries,
+          at: body.at,
+          clickup: body.clickup ?? false,
+          clickupError: body.clickupError ?? null,
+          needsSql: !!body.needsSql,
+          presentations: body.presentations ?? [],
+          driveError: body.driveError ?? null,
+        });
         return body.summaries as SummaryPage[];
       }
     } catch {
@@ -142,6 +152,15 @@ export function SummariesView() {
     ...(x.id ? {} : { clickup_key: x.key, clickup_url: x.url }),
   });
 
+  // Presentaciones del Drive de cada resumen (mismo cliente y mes)
+  const presentations = state.status === "ok" ? state.presentations : [];
+  const sameClient = (a: string, b: string) => (matchClient(a, clients)?.id ?? a) === (matchClient(b, clients)?.id ?? b);
+  const decks = (x: SummaryPage) => presentationsFor(x, presentations, sameClient);
+  const openDeck = (e: React.MouseEvent | React.KeyboardEvent, url: string) => {
+    e.stopPropagation();
+    window.open(url, "_blank", "noopener");
+  };
+
   const card = (x: SummaryPage, showClient: boolean) => (
     <button key={x.key} className={`sum-card ${open?.key === x.key ? "sel" : ""}`} style={{ borderTopColor: colorOf(x) }} onClick={() => (setDraft(null), setOpen(x))}>
       <div className="sum-top">
@@ -150,6 +169,23 @@ export function SummariesView() {
       </div>
       {showClient && <span className="muted sum-month">{monthLabel(x.month)}</span>}
       <p>{plainPreview(x.content) || <span className="muted">Sin contenido todavía</span>}</p>
+      {decks(x).length > 0 && (
+        <span className="sum-decks">
+          {decks(x).map((d) => (
+            <span
+              key={d.id}
+              role="link"
+              tabIndex={0}
+              className="sum-deck"
+              title={`Abrir «${d.name}» en Drive`}
+              onClick={(e) => openDeck(e, d.url)}
+              onKeyDown={(e) => e.key === "Enter" && openDeck(e, d.url)}
+            >
+              📊 {decks(x).length > 1 ? d.name.replace(/^\[[^\]]*\]\s*/, "").replace(/_ModusRetis$/i, "") : "Presentación"}
+            </span>
+          ))}
+        </span>
+      )}
       <span className="muted sum-foot">
         {x.source === "app" ? (x.clickup_key ? "En la app y en ClickUp" : "Escrito en la app") : "De ClickUp"} · {fmtDay(x.updated)}
       </span>
@@ -185,6 +221,7 @@ export function SummariesView() {
       {state.status === "ok" && state.needsSql && staff && (
         <div className="notice">Para escribir resúmenes en la app falta correr el SQL 0008_resumenes en Supabase. Mientras tanto se ven los de ClickUp.</div>
       )}
+      {state.status === "ok" && state.driveError && staff && <div className="notice">No se pudieron leer las presentaciones del Drive ({state.driveError}).</div>}
       {state.status === "ok" && state.clickupError && <div className="notice">No se pudo leer ClickUp ({state.clickupError}). Se muestran los que están guardados en la app.</div>}
 
       {state.status === "ok" && (
@@ -307,6 +344,15 @@ export function SummariesView() {
               {open.sent_at ? ` · mandado a ClickUp el ${fmtDay(open.sent_at)}` : ""}
             </span>
           </div>
+          {decks(open).length > 0 && (
+            <div className="sum-deck-list">
+              {decks(open).map((d) => (
+                <a key={d.id} className="btn sm" href={d.url} target="_blank" rel="noreferrer" title="Abrir en Drive">
+                  📊 {d.name} ↗
+                </a>
+              ))}
+            </div>
+          )}
           <Markdown text={open.content} />
           {open.versions.length > 0 && (
             <div className="meta-line">

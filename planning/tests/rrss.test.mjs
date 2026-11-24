@@ -23,6 +23,8 @@ async function setup() {
     await db.exec(read(f));
   await db.exec(read("migrations/0005_rrss.sql")); // se pueden volver a correr
   await db.exec(read("migrations/0006_publicacion.sql"));
+  await db.exec(read("migrations/0012_reemplazar_calendario.sql"));
+  await db.exec(read("migrations/0012_reemplazar_calendario.sql"));
   await db.exec(`
     grant usage on schema public, auth to authenticated;
     grant all on all tables in schema public to authenticated;
@@ -52,7 +54,7 @@ test("clientes con calendario de redes", async () => {
   assert.deepEqual(r.rows.map((x) => x.name), ["Confort Iván", "Modus Retis", "Ultragrif"]);
 });
 
-test("piezas: cualquiera programa a su nombre, edita lo suyo, borra solo admin", async () => {
+test("piezas: cualquiera programa a su nombre y edita lo suyo; borra las no publicadas (las publicadas, solo admin)", async () => {
   const db = await setup();
   const id = (await as(db, MEMBER, piece, [["instagram", "tiktok"], MEMBER, MEMBER])).rows[0].id;
   await assert.rejects(as(db, MEMBER, piece, [["instagram"], OTHER, MEMBER]), /row-level security/);
@@ -68,9 +70,12 @@ test("piezas: cualquiera programa a su nombre, edita lo suyo, borra solo admin",
   // el líder edita la de su equipo
   assert.equal((await as(db, LEAD, `update public.social_posts set status = 'programada' where id = $1 returning id`, [id])).rows.length, 1);
 
+  // una publicada solo la borra un admin; las demás, cualquiera (para reemplazar un calendario)
+  await db.query(`update public.social_posts set status = 'publicada' where id = $1`, [id]);
   assert.equal((await as(db, MEMBER, `delete from public.social_posts where id = $1 returning id`, [id])).rows.length, 0);
   assert.equal((await as(db, ADMIN, `delete from public.social_posts where id = $1 returning id`, [id])).rows.length, 1);
-  assert.equal((await as(db, OTHER, `select count(*)::int n from public.social_posts`)).rows[0].n, 1);
+  assert.equal((await as(db, MEMBER, `delete from public.social_posts where id = $1 returning id`, [id2])).rows.length, 1);
+  assert.equal((await as(db, OTHER, `select count(*)::int n from public.social_posts`)).rows[0].n, 0);
 });
 
 test("programar una pieza crea su publicación por red; desprogramarla la cancela", async () => {

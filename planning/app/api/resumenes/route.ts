@@ -4,6 +4,7 @@
 // GET lista · POST { action: "save" | "send" | "delete" }
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/social/auth";
+import { driveConfig, fetchPresentations, type Presentation } from "@/lib/drive";
 import { clickupConfig, fetchSummaryPages, sendSummaryPage, summaryDocFor } from "@/lib/clickup";
 import { buildSummaries, copiesToSave, hoursOf, matchClient, mergeSummaries, monthLabel, redact, type StoredSummary, type SummaryPage } from "@/lib/summaries";
 
@@ -17,6 +18,15 @@ export async function GET(req: Request) {
   if (!me) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   const supabase = me.supabase;
   const cfg = clickupConfig(new URL(req.url).searchParams.get("fresh") === "1");
+
+  // Presentaciones del Drive (en paralelo; si falla, los resúmenes se muestran igual)
+  const drive = driveConfig();
+  const presentations: Promise<{ list: Presentation[]; error: string | null }> = drive
+    ? fetchPresentations(fetch, drive).then(
+        (list) => ({ list, error: null }),
+        (e: Error) => ({ list: [], error: e.message }),
+      )
+    : Promise.resolve({ list: [], error: null });
 
   // 1. ClickUp (si está conectado): si falla, igual se muestra lo que hay en la app
   let live: SummaryPage[] = [];
@@ -38,7 +48,8 @@ export async function GET(req: Request) {
   if (error) {
     // Todavía no se corrió el SQL 0008: solo lo de ClickUp
     if (!cfg) return NextResponse.json({ error: "missing_config" }, { status: 503 });
-    return NextResponse.json({ summaries: live.map((p) => ({ ...p, source: "clickup", id: null })), at: new Date().toISOString(), clickupError, needsSql: true });
+    const pr = await presentations;
+    return NextResponse.json({ summaries: live.map((p) => ({ ...p, source: "clickup", id: null })), at: new Date().toISOString(), clickupError, needsSql: true, presentations: pr.list, driveError: pr.error });
   }
   let stored = (rows ?? []) as StoredSummary[];
 
@@ -74,7 +85,15 @@ export async function GET(req: Request) {
   if (me.role !== "admin") stored = stored.filter((s) => !s.clickup_key?.startsWith("task:"));
 
   const nameOf = (id: string | null) => (id ? (clients ?? []).find((c) => c.id === id)?.name ?? null : null);
-  return NextResponse.json({ summaries: mergeSummaries(stored, live, nameOf, (n) => matchClient(n, clients ?? [])), at: new Date().toISOString(), clickupError, clickup: !!cfg });
+  const pr = await presentations;
+  return NextResponse.json({
+    summaries: mergeSummaries(stored, live, nameOf, (n) => matchClient(n, clients ?? [])),
+    at: new Date().toISOString(),
+    clickupError,
+    clickup: !!cfg,
+    presentations: pr.list,
+    driveError: pr.error,
+  });
 }
 
 interface SaveBody {

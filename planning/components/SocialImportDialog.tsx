@@ -10,7 +10,6 @@ import { norm, parseSocialCalendar, type ImportedPiece, type ImportResult } from
 import { runCalendarScripts } from "@/lib/socialRun";
 import { FORMATS, NETWORKS, POST_STATUS } from "@/lib/social";
 import { fmtMonth, fmtShort } from "@/lib/dates";
-import { canDelete } from "@/lib/permissions";
 import type { Network, PostFormat, PostStatus } from "@/lib/types";
 
 type Row = ImportedPiece & { on: boolean; dup: boolean; noNet: boolean; open: boolean };
@@ -44,7 +43,6 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
 
   // sumar: se agregan al calendario que ya está · reemplazar: se borran las piezas de ese cliente en esos meses (menos las publicadas)
   const [mode, setMode] = useState<"sumar" | "reemplazar">("sumar");
-  const admin = canDelete(me);
   const markDups = (list: Row[], cid: string, m: "sumar" | "reemplazar" = mode) =>
     list.map((r) => {
       const dup =
@@ -96,7 +94,6 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
     if (!chosen.length) return toast("No hay piezas marcadas para importar", true);
     if (missingDate) return toast(`Faltan fechas en ${missingDate} ${missingDate === 1 ? "pieza" : "piezas"}`, true);
     if (mode === "reemplazar") {
-      if (!admin) return toast("Reemplazar el calendario es solo para admins", true);
       if (
         replaced.length &&
         !confirm(`Se van a borrar ${replaced.length} ${replaced.length === 1 ? "pieza" : "piezas"} de ${clientName} de ${monthsLabel} (las publicadas quedan) y cargar ${chosen.length}. ¿Seguimos?`)
@@ -295,8 +292,6 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
                 <button
                   className={mode === "reemplazar" ? "on" : ""}
                   onClick={() => changeMode("reemplazar")}
-                  disabled={!admin}
-                  title={admin ? undefined : "Reemplazar (borrar lo que había) es solo para admins"}
                 >
                   Reemplazar el calendario
                 </button>
@@ -305,7 +300,6 @@ export function SocialImportDialog({ onClose, onDone }: { onClose: () => void; o
                 {mode === "sumar"
                   ? "Se agregan las piezas nuevas a las que ya están; las repetidas (mismo día y título) quedan desmarcadas."
                   : `Se borran las ${replaced.length} piezas de ${clientName} de ${monthsLabel} que no están publicadas${existing.length > replaced.length ? ` (quedan las ${existing.length - replaced.length} publicadas)` : ""} y se cargan las del archivo.`}
-                {!admin && " Reemplazar es solo para admins."}
               </div>
             </div>
           )}
