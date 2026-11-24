@@ -22,7 +22,7 @@ alter table public.deletion_log enable row level security;
 drop policy if exists deletion_log_read on public.deletion_log;
 create policy deletion_log_read on public.deletion_log for select to authenticated using (public.my_role() = 'admin');
 -- Sin políticas de alta, cambio ni borrado: solo escribe el trigger
-revoke insert, update, delete on public.deletion_log from authenticated, anon;
+revoke insert, update, delete, truncate on public.deletion_log from authenticated, anon;
 grant select on public.deletion_log to authenticated;
 
 create or replace function public.log_deletion() returns trigger

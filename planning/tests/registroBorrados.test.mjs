@@ -11,7 +11,9 @@ const MEMBER = "00000000-0000-0000-0000-00000000000c";
 test("queda registro de quién borró qué, solo lo ven admins y nadie lo puede tocar", async () => {
   const db = new PGlite();
   await db.exec(`create role authenticated; create role anon; create schema auth; create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
-    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;`);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    -- Como Supabase: las tablas nuevas vienen con todos los permisos para la app (0013 se los saca al registro)
+    alter default privileges in schema public grant all on tables to authenticated, anon;`);
   for (const f of ["0001_init.sql", "0002_horarios_repeticion_asignacion.sql", "0003_avisos.sql", "0004_varios_responsables.sql", "0005_rrss.sql", "0012_reemplazar_calendario.sql", "0013_registro_borrados.sql", "0013_registro_borrados.sql"]) await db.exec(read(f));
   await db.exec(`grant usage on schema public, auth to authenticated; grant select, insert, update, delete on public.social_posts, public.tasks, public.projects, public.clients to authenticated; grant execute on all functions in schema public, auth to authenticated;
     insert into auth.users (id, email, raw_user_meta_data) values ('${ADMIN}', 'a@x', '{"full_name":"Coni"}'), ('${MEMBER}', 'm@x', '{"full_name":"Barbi"}');`);
@@ -34,6 +36,7 @@ test("queda registro de quién borró qué, solo lo ven admins y nadie lo puede 
   await assert.rejects(as(ADMIN, `delete from public.deletion_log`));
   await assert.rejects(as(ADMIN, `update public.deletion_log set title = 'x'`));
   await assert.rejects(as(ADMIN, `insert into public.deletion_log (table_name, row_data) values ('x', '{}')`));
+  await assert.rejects(as(ADMIN, `truncate public.deletion_log`));
 
   // Borrar un cliente deja registro del cliente y de lo que se borra en cascada
   await db.query(`insert into public.projects (client_id, name, start_date, end_date) values ($1, 'Catálogo', '2026-11-01', '2026-12-01')`, [c]);
